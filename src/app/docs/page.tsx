@@ -29,7 +29,7 @@ export default function DocsPage() {
     const res = await fetch(`${baseUrl}/api/echo`, {
       method: "POST",
       headers: { "x-api-key": key, "content-type": "application/json" },
-      body: postBody,
+      body: JSON.stringify({ postBody }),
     });
     setOut(JSON.stringify(await res.json(), null, 2));
   }
@@ -42,20 +42,19 @@ export default function DocsPage() {
           <BookOpen className="h-7 w-7 text-blue-300" />
           API Documentation
         </h1>
-        <Link href={"/keys"}>
-        <Button 
+        <Link href="/keys">
+          <Button
             variant="outline"
-              className="flex items-center gap-3 px-6 py-3 text-lg rounded-xl
-                  bg-gradient-to-r from-amber-500/10 to-yellow-500/10
-                hover:from-amber-500/20 hover:to-yellow-500/20
-                border-amber-400/30 text-amber-200 
-                  backdrop-blur-sm transition-all duration-300 hover:scale-105"
-        >
+            className="flex items-center gap-3 px-6 py-3 text-lg rounded-xl
+                       bg-gradient-to-r from-amber-500/10 to-yellow-500/10
+                       hover:from-amber-500/20 hover:to-yellow-500/20
+                       border-amber-400/30 text-amber-200 
+                       backdrop-blur-sm transition-all duration-300 hover:scale-105"
+          >
             <KeyRound className="h-5 w-5" />
-                Keys Dashboard
-        </Button>
+            Keys Dashboard
+          </Button>
         </Link>
-
       </div>
 
       {/* Authentication Guide */}
@@ -66,7 +65,7 @@ export default function DocsPage() {
             Authentication
           </CardTitle>
           <CardDescription className="text-slate-300">
-            Use your API key to authenticate requests with the <code>x-api-key</code> header
+            Authenticate using the <code>x-api-key</code> header. Create a key in <code>/keys</code> and store it securely.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
@@ -99,7 +98,7 @@ export default function DocsPage() {
               <code>{`curl -X POST 
   -H "x-api-key: <YOUR_KEY>" 
   -H "content-type: application/json" 
-  -d '{Hello World}' 
+  -d '{"hello":"world"}' 
   ${baseUrl}/api/echo`}</code>
             </pre>
             <pre className="bg-black/40 text-blue-200 text-sm p-3 rounded-lg overflow-x-auto">
