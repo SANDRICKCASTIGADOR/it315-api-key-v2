@@ -119,7 +119,7 @@ export default function KeysPage() {
 
          {/* Enhanced title */}
          <h1 className="text-5xl font-bold bg-gradient-to-r from-white via-blue-100 to-indigo-200 bg-clip-text text-transparent mb-6 drop-shadow-2xl">
-            Welcome to Your API Hub
+            Welcome to Your CodeVault
          </h1>
 
          {/* Enhanced description */}
