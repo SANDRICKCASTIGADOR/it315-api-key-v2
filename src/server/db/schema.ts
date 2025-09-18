@@ -8,11 +8,12 @@ export const createTable = pgTableCreator((name) => `it315-api-key_${name}`);
 export const apiKeys = createTable("api_keys", (d) => ({
   id: d.text("id").primaryKey(),
   name: d.varchar("name", { length: 256 }).notNull(),
-  key: d.text("key").notNull(),   // 🔥 rename para match sa API/validation
+  hashedKey: d.text("hashedKey").notNull(),   // ✅ match
   last4: d.varchar("last4", { length: 4 }).notNull(),
   createdAt: d.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   revoked: d.boolean("revoked").notNull().default(false),
 }));
+
 
 // New Hardware Specifications table
 export const hardwareSpecs = createTable("hardware_specs", (d) => ({
