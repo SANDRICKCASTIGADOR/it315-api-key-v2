@@ -41,7 +41,6 @@ export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs)
         last4,
     });
     
-    // Insert hardware specs if provided
     if (hardwareSpecsData) {
         await db.insert(hardwareSpecs).values({
             id: specId,
@@ -66,7 +65,7 @@ export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs)
 }
 
 export async function listKeys() {
-    // Join both tables to get complete information
+   
     const result = await db
         .select({
             id: apiKeys.id,
@@ -104,7 +103,7 @@ export async function updateKeySpecs(
     apiKeyId: string, 
     hardwareSpecsData: Partial<HardwareSpecs>
 ) {
-    // Check if hardware specs exist
+    
     const existing = await db
         .select()
         .from(hardwareSpecs)

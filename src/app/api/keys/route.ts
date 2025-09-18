@@ -8,12 +8,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     console.log("Received body:", body);
-    
-    // Validate the request body
+   
     const validatedData = CreateKeySchema.parse(body);
     const { name, hardwareSpecs } = validatedData;
     
-    // Call insertKey with name and hardware specs
     const result = await insertKey(name, hardwareSpecs);
     
     return Response.json({
@@ -27,7 +25,6 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Error creating key:", error);
     
-    // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return Response.json(
         { 
@@ -51,8 +48,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   try {
     const keys = await listKeys();
-    
-    // Map the results to include masked keys
+
     const items = keys.map(key => ({
       id: key.id,
       name: key.name,
@@ -88,7 +84,6 @@ export async function DELETE(req: NextRequest) {
       return Response.json({ error: "keyId is required" }, { status: 400 });
     }
     
-    // Validate the keyId
     const validatedData = DeleteKeySchema.parse({ keyId });
     
     const success = await revokeKey(validatedData.keyId);
@@ -102,7 +97,6 @@ export async function DELETE(req: NextRequest) {
   } catch (error) {
     console.error("Error revoking key:", error);
     
-    // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return Response.json(
         { 

@@ -1,4 +1,4 @@
-// server/validation.ts
+// ~/server/validation.ts
 import { z } from "zod";
 
 export const CreateKeySchema = z.object({

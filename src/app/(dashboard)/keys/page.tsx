@@ -29,6 +29,7 @@ import { useEffect, useState } from "react";
 
 type KeyItem = {
   id: string;
+  name?: string;
   imageUrl?: string;
   masked: string;
   createdAt: string;
@@ -51,6 +52,7 @@ type HardwareSpecs = {
 };
 
 export default function KeysPage() {
+  const [name, setName] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [hardwareSpecs, setHardwareSpecs] = useState<HardwareSpecs>({
     brandname: "",
@@ -60,35 +62,36 @@ export default function KeysPage() {
     ram: "",
     storage: "",
   });
-  const [justCreated, setJustCreated] = useState<{
-    key: string;
-    id: string;
-  } | null>(null);
+  const [justCreated, setJustCreated] = useState<{ key: string; id: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<KeyItem[]>([]);
+
   
-  async function createKey() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/keys", {
-        method: "POST",
-        headers: { "content-type": "application/json"},
-        body: JSON.stringify({ 
-          imageUrl: imageUrl || undefined,
-          hardwareSpecs: {
-            brandname: hardwareSpecs.brandname || undefined,
-            processor: hardwareSpecs.processor || undefined,
-            graphic: hardwareSpecs.graphic || undefined,
-            display: hardwareSpecs.display || undefined,
-            ram: hardwareSpecs.ram || undefined,
-            storage: hardwareSpecs.storage || undefined,
-          }
-        }),
+async function createKey() {
+  setLoading(true);
+  try {
+    const res = await fetch("/api/keys", {
+      method: "POST",
+      headers: { "content-type": "application/json"},
+      body: JSON.stringify({ 
+        name: name || undefined,
+        hardwareSpecs: {
+          imageUrl: imageUrl || undefined,  // Move imageUrl inside hardwareSpecs
+          brandname: hardwareSpecs.brandname || undefined,
+          processor: hardwareSpecs.processor || undefined,
+          graphic: hardwareSpecs.graphic || undefined,
+          display: hardwareSpecs.display || undefined,
+          ram: hardwareSpecs.ram || undefined,
+          storage: hardwareSpecs.storage || undefined,
+        }
+      }),
+
       });
       const data = await res.json();
       if (res.ok){
         setJustCreated({ key: data.key, id: data.id });
         // Reset form
+        setName("");
         setImageUrl("");
         setHardwareSpecs({
           brandname: "",
@@ -126,6 +129,17 @@ export default function KeysPage() {
 
   const updateHardwareSpec = (field: keyof HardwareSpecs, value: string) => {
     setHardwareSpecs(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Function to format the key display like sk_live_...
+  const formatKeyDisplay = (maskedKey: string) => {
+    // If it's already in the correct format, return as is
+    if (maskedKey.startsWith('sk_live_') || maskedKey.startsWith('sk_test_')) {
+      return maskedKey;
+    }
+    
+    // Otherwise, format it as sk_live_[masked portion]
+    return `sk_live_${maskedKey}`;
   };
 
   return (
@@ -233,6 +247,16 @@ export default function KeysPage() {
             </Button>
             </CardHeader>
             <CardContent className="space-y-8 p-8">
+              <div className="space-y-2">
+  <Label className="text-sm font-medium text-slate-300">Name</Label>
+  <Input
+    placeholder="Enter key name (e.g., Project Alpha)"
+    value={name}
+    onChange={(e) => setName(e.target.value)}
+    className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 text-lg focus:border-blue-400/50 focus:ring-blue-400/20 backdrop-blur-sm"
+  />
+</div>
+
               {/* Basic Information */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -339,17 +363,17 @@ export default function KeysPage() {
             </CardContent>
           </Card>
 
-          {/* Enhanced Existing Keys Card */}
+          {/* API Keys Table */}
           <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl rounded-2xl overflow-hidden hover:bg-white/8 transition-all duration-500">
             <CardHeader className="p-8 bg-gradient-to-r from-slate-500/5 to-gray-500/5">
               <CardTitle className="text-2xl text-white flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-slate-500/20 to-gray-500/20 rounded-lg flex items-center justify-center">
                   <KeyRound className="h-4 w-4 text-slate-300" />
                 </div>
-                Active API Keys
+                API Keys Overview
               </CardTitle>
               <CardDescription className="text-slate-300 text-lg">
-                Manage all your active and revoked API keys with device information
+                Manage your API keys with name, key, and status information
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -357,68 +381,21 @@ export default function KeysPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/10 bg-white/5">
-                      <TableHead className="text-slate-200 font-semibold py-4 px-4">Image</TableHead>
-                      <TableHead className="text-slate-200 font-semibold py-4">Key Preview</TableHead>
-                      <TableHead className="text-slate-200 font-semibold py-4">Hardware</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4 px-6">Name</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Key</TableHead>
                       <TableHead className="text-slate-200 font-semibold py-4">Created</TableHead>
                       <TableHead className="text-slate-200 font-semibold py-4">Status</TableHead>
-                      <TableHead className="text-right text-slate-200 font-semibold py-4 px-4">Actions</TableHead>
+                      <TableHead className="text-right text-slate-200 font-semibold py-4 px-6">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((row, index) => (
                     <TableRow key={row.id} className="border-white/5 hover:bg-white/5 transition-colors duration-200">
-                      <TableCell className="py-4 px-4">
-                        {row.imageUrl ? (
-                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-black/20">
-                            <img 
-                              src={row.imageUrl} 
-                              alt="Device" 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-500"><Monitor class="h-6 w-6" /></div>';
-                                }
-                              }}
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-lg border border-white/10 bg-slate-500/10 flex items-center justify-center">
-                            <Monitor className="h-6 w-6 text-slate-500" />
-                          </div>
-                        )}
+                      <TableCell className="py-4 px-6 font-medium text-slate-200">
+                        {row.name || <span className="text-slate-500 italic">Unnamed Key #{index + 1}</span>}
                       </TableCell>
-                      <TableCell className="font-mono text-slate-300 bg-black/20 rounded-lg mx-2 py-2 px-3 text-sm min-w-[200px]">{row.masked}</TableCell>
-                      <TableCell className="py-4 min-w-[200px]">
-                        {(row.brandname || row.processor || row.graphic || row.display || row.ram || row.storage) ? (
-                          <div className="space-y-1 text-xs">
-                            {row.brandname && (
-                              <div className="flex items-center gap-1 text-slate-300">
-                                <Monitor className="h-3 w-3" />
-                                <span className="truncate">{row.brandname}</span>
-                              </div>
-                            )}
-                            {row.processor && (
-                              <div className="flex items-center gap-1 text-slate-300">
-                                <Cpu className="h-3 w-3" />
-                                <span className="truncate">{row.processor}</span>
-                              </div>
-                            )}
-                            {(row.ram || row.storage) && (
-                              <div className="flex items-center gap-1 text-slate-300">
-                                <HardDrive className="h-3 w-3" />
-                                <span className="truncate">
-                                  {[row.ram, row.storage].filter(Boolean).join(" / ")}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-500 text-xs">No specs</span>
-                        )}
+                      <TableCell className="font-mono text-slate-300 bg-black/20 rounded-lg mx-2 py-2 px-3 text-sm min-w-[200px]">
+                        {formatKeyDisplay(row.masked)}
                       </TableCell>
                       <TableCell className="text-slate-300 py-4 text-sm">
                            {new Date(row.createdAt).toLocaleDateString()}
@@ -430,13 +407,14 @@ export default function KeysPage() {
                         <Badge className="bg-green-500/10 text-green-300 border-green-500/30 px-3 py-1 rounded-full">Active</Badge>
                        )}
                       </TableCell>
-                      <TableCell className="text-right py-4 px-4">
+                      <TableCell className="text-right py-4 px-6">
                         <Button 
                           variant="destructive" 
                           size="sm" 
                           disabled={row.revoked}
                           onClick={() => revokeKey(row.id)}
                           className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border-red-500/30 rounded-lg px-4 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50">
+                          <Trash2 className="h-4 w-4 mr-1" />
                           Revoke
                         </Button>
                       </TableCell>
@@ -444,7 +422,7 @@ export default function KeysPage() {
                     ))}
                     {items.length === 0 && (
                        <TableRow>
-                         <TableCell colSpan={6} className="text-center text-lg text-slate-400 py-12">
+                         <TableCell colSpan={5} className="text-center text-lg text-slate-400 py-12">
                             <div className="flex flex-col items-center gap-4">
                               <div className="w-16 h-16 bg-slate-500/10 rounded-2xl flex items-center justify-center">
                                 <KeyRound className="h-8 w-8 text-slate-500" />
@@ -452,6 +430,143 @@ export default function KeysPage() {
                               <div>
                                 <p className="font-medium mb-1">No API Keys yet</p>
                                 <p className="text-sm text-slate-500">Create your first API key to get started</p>
+                              </div>
+                            </div>
+                         </TableCell>
+                       </TableRow>
+                    )}     
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Hardware Specifications Table */}
+          <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl rounded-2xl overflow-hidden hover:bg-white/8 transition-all duration-500">
+            <CardHeader className="p-8 bg-gradient-to-r from-purple-500/5 to-indigo-500/5">
+              <CardTitle className="text-2xl text-white flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-lg flex items-center justify-center">
+                  <Monitor className="h-4 w-4 text-purple-300" />
+                </div>
+                Hardware Specifications
+              </CardTitle>
+              <CardDescription className="text-slate-300 text-lg">
+                Device images and hardware specifications for each API key
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-white/10 bg-white/5">
+                      <TableHead className="text-slate-200 font-semibold py-4 px-6">Key Name</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Device Image</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Brand</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Processor</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Graphics</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Display</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Memory</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4 px-6">Storage</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {items.map((row, index) => (
+                    <TableRow key={`specs-${row.id}`} className="border-white/5 hover:bg-white/5 transition-colors duration-200">
+                      <TableCell className="py-4 px-6 font-medium text-slate-200">
+                        {row.name || <span className="text-slate-500 italic">Unnamed Key #{index + 1}</span>}
+                      </TableCell>
+                      <TableCell className="py-4">
+                        {row.imageUrl ? (
+                          <div className="w-20 h-20 rounded-lg overflow-hidden border border-white/10 bg-black/20 shadow-lg">
+                            <img 
+                              src={row.imageUrl} 
+                              alt="Device" 
+                              className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-500 bg-slate-800/50"><svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div>';
+                                }
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-20 h-20 rounded-lg border border-white/10 bg-slate-500/10 flex items-center justify-center">
+                            <Monitor className="h-8 w-8 text-slate-500" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-4 text-slate-300">
+                        {row.brandname ? (
+                          <div className="flex items-center gap-2">
+                            <Monitor className="h-4 w-4 text-blue-400" />
+                            <span>{row.brandname}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">Not specified</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-4 text-slate-300 max-w-[150px]">
+                        {row.processor ? (
+                          <div className="flex items-center gap-2">
+                            <Cpu className="h-4 w-4 text-green-400 flex-shrink-0" />
+                            <span className="truncate" title={row.processor}>{row.processor}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">Not specified</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-4 text-slate-300 max-w-[150px]">
+                        {row.graphic ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-purple-400 rounded-sm flex-shrink-0"></div>
+                            <span className="truncate" title={row.graphic}>{row.graphic}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">Not specified</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-4 text-slate-300 max-w-[120px]">
+                        {row.display ? (
+                          <span className="truncate" title={row.display}>{row.display}</span>
+                        ) : (
+                          <span className="text-slate-500 text-sm">Not specified</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-4 text-slate-300">
+                        {row.ram ? (
+                          <div className="flex items-center gap-2">
+                            <HardDrive className="h-4 w-4 text-orange-400" />
+                            <span>{row.ram}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">Not specified</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-4 px-6 text-slate-300">
+                        {row.storage ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 bg-cyan-400 rounded-full flex-shrink-0"></div>
+                            <span>{row.storage}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-sm">Not specified</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                    ))}
+                    {items.length === 0 && (
+                       <TableRow>
+                         <TableCell colSpan={8} className="text-center text-lg text-slate-400 py-12">
+                            <div className="flex flex-col items-center gap-4">
+                              <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center">
+                                <Monitor className="h-8 w-8 text-purple-500" />
+                              </div>
+                              <div>
+                                <p className="font-medium mb-1">No Hardware Specifications</p>
+                                <p className="text-sm text-slate-500">Add hardware specs when creating API keys to see them here</p>
                               </div>
                             </div>
                          </TableCell>
