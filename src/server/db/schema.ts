@@ -1,20 +1,12 @@
-// Example model schema from the Drizzle docs
-// https://orm.drizzle.team/docs/sql-schema-declaration
+// Check your schema.ts file - make sure it looks like this:
 import { sql } from "drizzle-orm";
-import { index, pgTableCreator } from "drizzle-orm/pg-core";
+import { index, pgTableCreator, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
 
-/**
- * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
- * database instance for multiple projects.
- *
- * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
- */
 export const createTable = pgTableCreator((name) => `it315-api-key_${name}`);
 
 export const apiKeys = createTable("api_keys", (d) => ({
-  // id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
   id: d.text("id").primaryKey(),
-  imageUrl: d.text("image_url"),
+  imageUrl: d.text("image_url"), // Note: snake_case in DB, camelCase in TypeScript
   hashedKey: d.text("hashed_key").notNull(),
   last4: d.varchar("last4", { length: 4 }).notNull(),
   createdAt: d
@@ -23,7 +15,7 @@ export const apiKeys = createTable("api_keys", (d) => ({
     .notNull(),
   revoked: d.boolean("revoked").notNull().default(false),
   
-  // Specs
+  // Hardware specifications
   brandname: d.varchar("brandname", { length: 100 }),
   processor: d.varchar("processor", { length: 200 }),
   graphic: d.varchar("graphic", { length: 200 }),
