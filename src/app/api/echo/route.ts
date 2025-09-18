@@ -14,17 +14,30 @@ export async function POST(req: NextRequest) {
         
     const body = await req.json();
     
-    const getName = await db
-      .select({ id: apiKeys.id, name: apiKeys.name })
+    const getKeyData = await db
+      .select({ 
+        id: apiKeys.id, 
+        imageUrl: apiKeys.imageUrl,
+        brandname: apiKeys.brandname,
+        processor: apiKeys.processor,
+        graphic: apiKeys.graphic,
+        display: apiKeys.display,
+        ram: apiKeys.ram,
+        storage: apiKeys.storage,
+        createdAt: apiKeys.createdAt,
+        revoked: apiKeys.revoked
+      })
       .from(apiKeys)
-      .where(eq(apiKeys.name, body.postBody));
+      .where(eq(apiKeys.id, result.keyId)); 
     
     return Response.json(
         {
             ok: true,
             message: "Hello POST",
-            received: getName,
+            keyData: getKeyData[0] || null, 
             keyId: result.keyId,
+            hardwareSpecs: result.hardwareSpecs,
+            imageUrl: result.imageUrl, 
         },
         { status: 200},
     );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
-import { BookOpen, Plus, KeyRound, Trash2 } from "lucide-react";
+import { BookOpen, Plus, KeyRound, Trash2, Monitor, Cpu, HardDrive } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import CopyButton from "~/components/copy-button";
 import {
   Table,
@@ -28,14 +29,37 @@ import { useEffect, useState } from "react";
 
 type KeyItem = {
   id: string;
-  name: string;
+  imageUrl?: string;
   masked: string;
   createdAt: string;
   revoked: boolean;
+  brandname?: string;
+  processor?: string;
+  graphic?: string;
+  display?: string;
+  ram?: string;
+  storage?: string;
+};
+
+type HardwareSpecs = {
+  brandname: string;
+  processor: string;
+  graphic: string;
+  display: string;
+  ram: string;
+  storage: string;
 };
 
 export default function KeysPage() {
-  const [name, setName] = useState("My API Key");
+  const [imageUrl, setImageUrl] = useState("");
+  const [hardwareSpecs, setHardwareSpecs] = useState<HardwareSpecs>({
+    brandname: "",
+    processor: "",
+    graphic: "",
+    display: "",
+    ram: "",
+    storage: "",
+  });
   const [justCreated, setJustCreated] = useState<{
     key: string;
     id: string;
@@ -46,14 +70,34 @@ export default function KeysPage() {
   async function createKey() {
     setLoading(true);
     try {
-      const res =  await fetch("/api/keys", {
+      const res = await fetch("/api/keys", {
         method: "POST",
         headers: { "content-type": "application/json"},
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ 
+          imageUrl: imageUrl || undefined,
+          hardwareSpecs: {
+            brandname: hardwareSpecs.brandname || undefined,
+            processor: hardwareSpecs.processor || undefined,
+            graphic: hardwareSpecs.graphic || undefined,
+            display: hardwareSpecs.display || undefined,
+            ram: hardwareSpecs.ram || undefined,
+            storage: hardwareSpecs.storage || undefined,
+          }
+        }),
       });
       const data = await res.json();
       if (res.ok){
         setJustCreated({ key: data.key, id: data.id });
+        // Reset form
+        setImageUrl("");
+        setHardwareSpecs({
+          brandname: "",
+          processor: "",
+          graphic: "",
+          display: "",
+          ram: "",
+          storage: "",
+        });
         await load();
       } else {
          alert(data.error ?? "Failed to create key");
@@ -78,7 +122,11 @@ export default function KeysPage() {
 
   useEffect(() => {
     load();
-  }, [createKey, revokeKey]);
+  }, []);
+
+  const updateHardwareSpec = (field: keyof HardwareSpecs, value: string) => {
+    setHardwareSpecs(prev => ({ ...prev, [field]: value }));
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 relative overflow-hidden">
@@ -139,7 +187,7 @@ export default function KeysPage() {
       </SignedOut>
 
       <SignedIn>
-        <div className="relative z-10 mx-auto max-w-6xl space-y-10 p-8">
+        <div className="relative z-10 mx-auto max-w-7xl space-y-10 p-8">
           {/* Enhanced Header */}
           <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
             <div className="space-y-2">
@@ -150,7 +198,7 @@ export default function KeysPage() {
                 API Keys Management
               </h1>
               <p className="text-slate-300 text-lg ml-1">
-                Secure, scalable API key generation and management
+                Secure, scalable API key generation and management with hardware tracking
               </p>
             </div>
             <Link href={"/docs"}>
@@ -172,27 +220,98 @@ export default function KeysPage() {
                   Generate New API Key
                 </CardTitle>
                 <CardDescription className="text-slate-300 text-lg">
-                  Create secure, unique API keys for development, staging, or production environments
+                  Create secure API keys with device specifications for better tracking
                 </CardDescription>
               </div>
             <Button 
                 className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white flex items-center gap-2 px-6 py-3 rounded-xl shadow-lg hover:shadow-emerald-500/25 transition-all duration-300 border-0"
                onClick={createKey}  
+               disabled={loading}
                 >
                <Plus className="h-4 w-4" />
-                 Create
+                 {loading ? "Creating..." : "Create"}
             </Button>
             </CardHeader>
-            <CardContent className="space-y-6 p-8">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Key Name</label>
-                <Input
-                  placeholder="Enter a descriptive name (e.g., Production API, Development Key)"
-                  aria-label="API key Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 text-lg focus:border-blue-400/50 focus:ring-blue-400/20 backdrop-blur-sm"
-                />
+            <CardContent className="space-y-8 p-8">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <KeyRound className="h-5 w-5 text-blue-300" />
+                  Basic Information
+                </h3>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-300">Image URL</Label>
+                  <Input
+                    placeholder="Enter image URL (e.g., https://example.com/device.jpg)"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 text-lg focus:border-blue-400/50 focus:ring-blue-400/20 backdrop-blur-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Hardware Specifications */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Monitor className="h-5 w-5 text-purple-300" />
+                  Hardware Specifications (Optional)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-300">Brand Name</Label>
+                    <Input
+                      placeholder="e.g., Dell, HP, Apple, ASUS"
+                      value={hardwareSpecs.brandname}
+                      onChange={(e) => updateHardwareSpec('brandname', e.target.value)}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 focus:border-purple-400/50 focus:ring-purple-400/20 backdrop-blur-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-300">Processor</Label>
+                    <Input
+                      placeholder="e.g., Intel Core i7-13700H, AMD Ryzen 7"
+                      value={hardwareSpecs.processor}
+                      onChange={(e) => updateHardwareSpec('processor', e.target.value)}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 focus:border-purple-400/50 focus:ring-purple-400/20 backdrop-blur-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-300">Graphics Card</Label>
+                    <Input
+                      placeholder="e.g., NVIDIA RTX 4070, AMD RX 7600"
+                      value={hardwareSpecs.graphic}
+                      onChange={(e) => updateHardwareSpec('graphic', e.target.value)}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 focus:border-purple-400/50 focus:ring-purple-400/20 backdrop-blur-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-300">Display</Label>
+                    <Input
+                      placeholder="e.g., 15.6 inch 1920x1080 IPS"
+                      value={hardwareSpecs.display}
+                      onChange={(e) => updateHardwareSpec('display', e.target.value)}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 focus:border-purple-400/50 focus:ring-purple-400/20 backdrop-blur-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-300">RAM</Label>
+                    <Input
+                      placeholder="e.g., 16GB DDR5, 32GB DDR4"
+                      value={hardwareSpecs.ram}
+                      onChange={(e) => updateHardwareSpec('ram', e.target.value)}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 focus:border-purple-400/50 focus:ring-purple-400/20 backdrop-blur-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-300">Storage</Label>
+                    <Input
+                      placeholder="e.g., 512GB NVMe SSD, 1TB HDD"
+                      value={hardwareSpecs.storage}
+                      onChange={(e) => updateHardwareSpec('storage', e.target.value)}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-slate-400 rounded-xl py-3 px-4 focus:border-purple-400/50 focus:ring-purple-400/20 backdrop-blur-sm"
+                    />
+                  </div>
+                </div>
               </div>
               
               {justCreated && (
@@ -230,28 +349,79 @@ export default function KeysPage() {
                 Active API Keys
               </CardTitle>
               <CardDescription className="text-slate-300 text-lg">
-                Manage all your active and revoked API keys
+                Manage all your active and revoked API keys with device information
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-hidden">
+              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-white/10 bg-white/5">
-                      <TableHead className="text-slate-200 font-semibold py-4 px-8">Name</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4 px-4">Image</TableHead>
                       <TableHead className="text-slate-200 font-semibold py-4">Key Preview</TableHead>
+                      <TableHead className="text-slate-200 font-semibold py-4">Hardware</TableHead>
                       <TableHead className="text-slate-200 font-semibold py-4">Created</TableHead>
                       <TableHead className="text-slate-200 font-semibold py-4">Status</TableHead>
-                      <TableHead className="text-right text-slate-200 font-semibold py-4 px-8">Actions</TableHead>
+                      <TableHead className="text-right text-slate-200 font-semibold py-4 px-4">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((row, index) => (
                     <TableRow key={row.id} className="border-white/5 hover:bg-white/5 transition-colors duration-200">
-                      <TableCell className="py-4 px-8 text-white font-medium">{row.id}</TableCell>
-                      <TableCell className="font-mono text-slate-300 bg-black/20 rounded-lg mx-2 py-2 px-3 text-sm">{row.masked}</TableCell>
-                      <TableCell className="text-slate-300 py-4">
-                           {new Date(row.createdAt).toLocaleString()}
+                      <TableCell className="py-4 px-4">
+                        {row.imageUrl ? (
+                          <div className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 bg-black/20">
+                            <img 
+                              src={row.imageUrl} 
+                              alt="Device" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-500"><Monitor class="h-6 w-6" /></div>';
+                                }
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg border border-white/10 bg-slate-500/10 flex items-center justify-center">
+                            <Monitor className="h-6 w-6 text-slate-500" />
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-slate-300 bg-black/20 rounded-lg mx-2 py-2 px-3 text-sm min-w-[200px]">{row.masked}</TableCell>
+                      <TableCell className="py-4 min-w-[200px]">
+                        {(row.brandname || row.processor || row.graphic || row.display || row.ram || row.storage) ? (
+                          <div className="space-y-1 text-xs">
+                            {row.brandname && (
+                              <div className="flex items-center gap-1 text-slate-300">
+                                <Monitor className="h-3 w-3" />
+                                <span className="truncate">{row.brandname}</span>
+                              </div>
+                            )}
+                            {row.processor && (
+                              <div className="flex items-center gap-1 text-slate-300">
+                                <Cpu className="h-3 w-3" />
+                                <span className="truncate">{row.processor}</span>
+                              </div>
+                            )}
+                            {(row.ram || row.storage) && (
+                              <div className="flex items-center gap-1 text-slate-300">
+                                <HardDrive className="h-3 w-3" />
+                                <span className="truncate">
+                                  {[row.ram, row.storage].filter(Boolean).join(" / ")}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 text-xs">No specs</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-slate-300 py-4 text-sm">
+                           {new Date(row.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="py-4">
                        {row.revoked ? (
@@ -260,7 +430,7 @@ export default function KeysPage() {
                         <Badge className="bg-green-500/10 text-green-300 border-green-500/30 px-3 py-1 rounded-full">Active</Badge>
                        )}
                       </TableCell>
-                      <TableCell className="text-right py-4 px-8">
+                      <TableCell className="text-right py-4 px-4">
                         <Button 
                           variant="destructive" 
                           size="sm" 
@@ -274,7 +444,7 @@ export default function KeysPage() {
                     ))}
                     {items.length === 0 && (
                        <TableRow>
-                         <TableCell colSpan={5} className="text-center text-lg text-slate-400 py-12">
+                         <TableCell colSpan={6} className="text-center text-lg text-slate-400 py-12">
                             <div className="flex flex-col items-center gap-4">
                               <div className="w-16 h-16 bg-slate-500/10 rounded-2xl flex items-center justify-center">
                                 <KeyRound className="h-8 w-8 text-slate-500" />
@@ -301,9 +471,9 @@ export default function KeysPage() {
               💡 <span className="font-semibold text-blue-300">Pro Tip:</span> Authenticate API requests using the{" "}
               <code className="rounded-lg bg-slate-800/50 border border-slate-600/30 px-3 py-1 text-blue-300 font-mono">x-api-key</code> header. 
               <br className="sm:hidden" />
-              <span className="text-slate-400">Need help? Check out our{" "}</span>
+              <span className="text-slate-400">Hardware specs help you track which devices are using each key.{" "}</span>
               <Link href={"/docs"} className="underline text-blue-400 hover:text-blue-300 font-semibold transition-colors duration-200">
-                comprehensive documentation
+                Check our documentation
               </Link>
               <span className="text-slate-400"> for examples and best practices.</span>
             </div>
@@ -313,4 +483,3 @@ export default function KeysPage() {
     </main>
   );
 }
-   
