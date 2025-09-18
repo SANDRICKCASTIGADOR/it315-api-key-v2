@@ -1,3 +1,4 @@
+// app/api/keys/route.ts
 import { NextRequest } from "next/server";
 import { insertKey, listKeys, revokeKey } from "~/server/keys";
 import { CreateKeySchema, DeleteKeySchema } from "~/server/validation";
@@ -8,27 +9,34 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log("Received body:", body);
     
-    // Temporarily bypass validation
-    // const validatedData = CreateKeySchema.parse(body);
-    const validatedData = body; // Use raw body for now
+    // Validate the request body
+    const validatedData = CreateKeySchema.parse(body);
+    const { name, hardwareSpecs } = validatedData;
     
-    const { imageUrl, hardwareSpecs } = validatedData;
-    
-    // Handle null/empty imageUrl
-    const cleanImageUrl = imageUrl || undefined;
-    
-    // Call insertKey with validated data
-    const result = await insertKey(cleanImageUrl, hardwareSpecs);
+    // Call insertKey with name and hardware specs
+    const result = await insertKey(name, hardwareSpecs);
     
     return Response.json({
       id: result.id,
-      imageUrl: result.imageUrl,
+      name: result.name,
       key: result.key,
       last4: result.last4,
+      hardwareSpecs: result.hardwareSpecs
     }, { status: 201 });
     
   } catch (error) {
     console.error("Error creating key:", error);
+    
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return Response.json(
+        { 
+          error: "Validation failed", 
+          details: error.errors 
+        },
+        { status: 400 }
+      );
+    }
     
     return Response.json(
       { 
@@ -47,10 +55,11 @@ export async function GET() {
     // Map the results to include masked keys
     const items = keys.map(key => ({
       id: key.id,
-      imageUrl: key.imageUrl,
-      masked: `****${key.last4}`, // Better masking format
+      name: key.name,
+      masked: `****${key.last4}`,
       createdAt: key.createdAt,
       revoked: key.revoked,
+      imageUrl: key.imageUrl,
       brandname: key.brandname,
       processor: key.processor,
       graphic: key.graphic,

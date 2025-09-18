@@ -1,7 +1,7 @@
+// server/keys.ts
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { db } from "./db";
-import { apiKeys } from "./db/schema";
-
+import { apiKeys, hardwareSpecs } from "./db/schema";
 import { desc, eq } from "drizzle-orm";
 
 const KEY_PREFIX = process.env.KEY_PREFIX ?? "sk_live_";
@@ -18,6 +18,7 @@ export function sha256(data: string) {
 }
 
 export interface HardwareSpecs {
+    imageUrl?: string;
     brandname?: string;
     processor?: string;
     graphic?: string;
@@ -26,42 +27,68 @@ export interface HardwareSpecs {
     storage?: string;
 }
 
-export async function insertKey(
-    imageUrl?: string | null, 
-    hardwareSpecs?: HardwareSpecs
-) {
+export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs) {
     const { key, last4 } = generatePlainKey();
     const hashed = sha256(key);
-    const id = randomUUID();
+    const keyId = randomUUID();
+    const specId = randomUUID();
     
+    // Insert API key
     await db.insert(apiKeys).values({ 
-        id, 
-        imageUrl, 
+        id: keyId, 
+        name, 
         hashedKey: hashed, 
         last4,
-        brandname: hardwareSpecs?.brandname,
-        processor: hardwareSpecs?.processor,
-        graphic: hardwareSpecs?.graphic,
-        display: hardwareSpecs?.display,
-        ram: hardwareSpecs?.ram,
-        storage: hardwareSpecs?.storage,
     });
     
+    // Insert hardware specs if provided
+    if (hardwareSpecsData) {
+        await db.insert(hardwareSpecs).values({
+            id: specId,
+            apiKeyId: keyId,
+            imageUrl: hardwareSpecsData.imageUrl,
+            brandname: hardwareSpecsData.brandname,
+            processor: hardwareSpecsData.processor,
+            graphic: hardwareSpecsData.graphic,
+            display: hardwareSpecsData.display,
+            ram: hardwareSpecsData.ram,
+            storage: hardwareSpecsData.storage,
+        });
+    }
+    
     return { 
-        id, 
-        imageUrl, 
+        id: keyId, 
+        name, 
         key, 
         last4,
-        ...hardwareSpecs 
+        hardwareSpecs: hardwareSpecsData
     } as const;
 }
 
 export async function listKeys() {
-    return db
-        .select()
+    // Join both tables to get complete information
+    const result = await db
+        .select({
+            id: apiKeys.id,
+            name: apiKeys.name,
+            last4: apiKeys.last4,
+            createdAt: apiKeys.createdAt,
+            revoked: apiKeys.revoked,
+            // Hardware specs
+            imageUrl: hardwareSpecs.imageUrl,
+            brandname: hardwareSpecs.brandname,
+            processor: hardwareSpecs.processor,
+            graphic: hardwareSpecs.graphic,
+            display: hardwareSpecs.display,
+            ram: hardwareSpecs.ram,
+            storage: hardwareSpecs.storage,
+        })
         .from(apiKeys)
+        .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
         .where(eq(apiKeys.revoked, false))
         .orderBy(desc(apiKeys.createdAt));
+    
+    return result;
 }
 
 export async function revokeKey(id: string) {
@@ -74,12 +101,62 @@ export async function revokeKey(id: string) {
 }
 
 export async function updateKeySpecs(
-    id: string, 
-    hardwareSpecs: Partial<HardwareSpecs>
+    apiKeyId: string, 
+    hardwareSpecsData: Partial<HardwareSpecs>
 ) {
-    const res = await db
-        .update(apiKeys)
-        .set({
+    // Check if hardware specs exist
+    const existing = await db
+        .select()
+        .from(hardwareSpecs)
+        .where(eq(hardwareSpecs.apiKeyId, apiKeyId))
+        .limit(1);
+    
+    if (existing.length > 0) {
+        // Update existing
+        const res = await db
+            .update(hardwareSpecs)
+            .set({
+                imageUrl: hardwareSpecsData.imageUrl,
+                brandname: hardwareSpecsData.brandname,
+                processor: hardwareSpecsData.processor,
+                graphic: hardwareSpecsData.graphic,
+                display: hardwareSpecsData.display,
+                ram: hardwareSpecsData.ram,
+                storage: hardwareSpecsData.storage,
+            })
+            .where(eq(hardwareSpecs.apiKeyId, apiKeyId));
+        
+        return (res.rowCount ?? 0) > 0;
+    } else {
+        // Create new
+        const specId = randomUUID();
+        await db.insert(hardwareSpecs).values({
+            id: specId,
+            apiKeyId,
+            imageUrl: hardwareSpecsData.imageUrl,
+            brandname: hardwareSpecsData.brandname,
+            processor: hardwareSpecsData.processor,
+            graphic: hardwareSpecsData.graphic,
+            display: hardwareSpecsData.display,
+            ram: hardwareSpecsData.ram,
+            storage: hardwareSpecsData.storage,
+        });
+        
+        return true;
+    }
+}
+
+export async function getKeyDetails(id: string) {
+    const result = await db
+        .select({
+            id: apiKeys.id,
+            name: apiKeys.name,
+            last4: apiKeys.last4,
+            createdAt: apiKeys.createdAt,
+            revoked: apiKeys.revoked,
+            hashedKey: apiKeys.hashedKey,
+            // Hardware specs
+            imageUrl: hardwareSpecs.imageUrl,
             brandname: hardwareSpecs.brandname,
             processor: hardwareSpecs.processor,
             graphic: hardwareSpecs.graphic,
@@ -87,46 +164,45 @@ export async function updateKeySpecs(
             ram: hardwareSpecs.ram,
             storage: hardwareSpecs.storage,
         })
-        .where(eq(apiKeys.id, id));
-    
-    return (res.rowCount ?? 0) > 0;
-}
-
-export async function getKeyDetails(id: string) {
-    const rows = await db
-        .select()
         .from(apiKeys)
-        .where(eq(apiKeys.id, id));
+        .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
+        .where(eq(apiKeys.id, id))
+        .limit(1);
     
-    return rows[0] || null;
+    return result[0] || null;
 }
 
 export async function verifyKey(apiKey: string) {
     const hashed = sha256(apiKey);
-    const rows = await db
+    const result = await db
         .select({ 
             id: apiKeys.id, 
+            name: apiKeys.name,
             revoked: apiKeys.revoked,
-            imageUrl: apiKeys.imageUrl,
-            brandname: apiKeys.brandname,
-            processor: apiKeys.processor,
-            graphic: apiKeys.graphic,
-            display: apiKeys.display,
-            ram: apiKeys.ram,
-            storage: apiKeys.storage,
+            // Hardware specs
+            imageUrl: hardwareSpecs.imageUrl,
+            brandname: hardwareSpecs.brandname,
+            processor: hardwareSpecs.processor,
+            graphic: hardwareSpecs.graphic,
+            display: hardwareSpecs.display,
+            ram: hardwareSpecs.ram,
+            storage: hardwareSpecs.storage,
         })
         .from(apiKeys)
-        .where(eq(apiKeys.hashedKey, hashed));
+        .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
+        .where(eq(apiKeys.hashedKey, hashed))
+        .limit(1);
     
-    const row = rows[0];
+    const row = result[0];
     if (!row) return { valid: false as const, reason: "not_found" as const };
     if (row.revoked) return { valid: false as const, reason: "revoked" as const };
     
     return { 
         valid: true as const, 
         keyId: row.id,
-        imageUrl: row.imageUrl,
+        name: row.name,
         hardwareSpecs: {
+            imageUrl: row.imageUrl,
             brandname: row.brandname,
             processor: row.processor,
             graphic: row.graphic,
