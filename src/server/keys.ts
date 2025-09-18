@@ -27,7 +27,7 @@ export interface HardwareSpecs {
 }
 
 export async function insertKey(
-    imageUrl?: string, 
+    imageUrl?: string | null, 
     hardwareSpecs?: HardwareSpecs
 ) {
     const { key, last4 } = generatePlainKey();

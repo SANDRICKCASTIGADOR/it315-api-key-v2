@@ -1,12 +1,11 @@
-// Check your schema.ts file - make sure it looks like this:
 import { sql } from "drizzle-orm";
-import { index, pgTableCreator, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTableCreator, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const createTable = pgTableCreator((name) => `it315-api-key_${name}`);
 
 export const apiKeys = createTable("api_keys", (d) => ({
   id: d.text("id").primaryKey(),
-  imageUrl: d.text("image_url"), // Note: snake_case in DB, camelCase in TypeScript
+  imageUrl: d.text("image_url"), // Note the snake_case in DB
   hashedKey: d.text("hashed_key").notNull(),
   last4: d.varchar("last4", { length: 4 }).notNull(),
   createdAt: d

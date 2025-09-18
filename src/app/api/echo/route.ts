@@ -8,6 +8,10 @@ export async function POST(req: NextRequest) {
     const apiKey = req.headers.get("x-api-key") ?? "";
     
     try {
+        // Log the incoming request details
+        console.log("Headers:", req.headers);
+        console.log("API Key:", apiKey);
+        
         const result = await verifyKey(apiKey);
         console.log("Verify result:", result);
         
