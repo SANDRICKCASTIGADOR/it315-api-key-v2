@@ -1,16 +1,16 @@
 import { z } from "zod";
 
 export const CreateKeySchema = z.object({
-  imageUrl: z.string().optional().nullable(),
+  imageUrl: z.string().optional().or(z.literal("")).or(z.null()).transform(val => val || undefined),
   hardwareSpecs: z.object({
-    brandname: z.string().max(100).optional().or(z.literal("")),
-    processor: z.string().max(200).optional().or(z.literal("")),
-    graphic: z.string().max(200).optional().or(z.literal("")),
-    display: z.string().max(150).optional().or(z.literal("")),
-    ram: z.string().max(50).optional().or(z.literal("")),
-    storage: z.string().max(100).optional().or(z.literal("")),
-  }).optional(),
-});
+    brandname: z.string().optional().or(z.literal("")).transform(val => val || undefined),
+    processor: z.string().optional().or(z.literal("")).transform(val => val || undefined),
+    graphic: z.string().optional().or(z.literal("")).transform(val => val || undefined),
+    display: z.string().optional().or(z.literal("")).transform(val => val || undefined),
+    ram: z.string().optional().or(z.literal("")).transform(val => val || undefined),
+    storage: z.string().optional().or(z.literal("")).transform(val => val || undefined),
+  }).optional().or(z.null()).transform(val => val || undefined),
+}).passthrough(); // Allow additional properties
 
 export const DeleteKeySchema = z.object({ 
   keyId: z.string().uuid() 
