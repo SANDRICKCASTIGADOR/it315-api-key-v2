@@ -65,7 +65,7 @@ export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs)
 }
 
 export async function listKeys() {
-   
+
     const result = await db
         .select({
             id: apiKeys.id,

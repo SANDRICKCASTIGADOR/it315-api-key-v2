@@ -19,7 +19,8 @@ export default function DocsPage() {
   const [postBody, setPostBody] = useState("Hello World");
 
   async function runGET() {
-    const res = await fetch(`${baseUrl}/api/ping`, {
+    const res = await fetch(`${baseUrl}/api/echo`, {
+      method: "GET",
       headers: { "x-api-key": key },
     });
     setOut(JSON.stringify(await res.json(), null, 2));
@@ -28,11 +29,34 @@ export default function DocsPage() {
   async function runPOST() {
     const res = await fetch(`${baseUrl}/api/echo`, {
       method: "POST",
-      headers: { "x-api-key": key, "content-type": "application/json" },
+      headers: { 
+        "x-api-key": key, 
+        "content-type": 
+        "application/json" 
+      },
       body: JSON.stringify({ postBody }),
     });
     setOut(JSON.stringify(await res.json(), null, 2));
   }
+
+  async function runOPTIONS() {
+    const res = await fetch(`${baseUrl}/api/echo`, {
+      method: "OPTIONS",
+      // headers: { 
+      //   Origin: "http://localhost:3000",
+      //   "Access-Control-Request-Method": "POST",
+      //   "Access-Control-Request-Headers": "x-api-key, content-type",
+      // },   
+    });
+    setOut(
+      `Status: ${res.status}\n ` +
+       Array.from(res.headers.entries())
+       .map(([key, value]) => `${key}: ${value}`)
+       .join("\n"),
+    );
+  }
+
+   
 
   return (
     <main className="mx-auto max-w-5xl space-y-8 p-6">
@@ -139,6 +163,9 @@ export default function DocsPage() {
               Test GET /api/ping
             </Button>
             <Button onClick={runPOST} className="flex-1">
+              Test POST /api/echo
+            </Button>
+            <Button onClick={runOPTIONS} className="flex-1">
               Test POST /api/echo
             </Button>
           </div>
