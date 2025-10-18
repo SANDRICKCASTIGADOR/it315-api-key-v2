@@ -5,56 +5,53 @@ const allowedOrigins = raw
   ? new Set(raw.split(",").map((s) => s.trim()))
   : null;
 
-  //const DEFAULT_METHODS = ["GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"];
-  const DEFAULT_METHODS = ["GET", "POST", "OPTIONS"].join(", ");
+const DEFAULT_METHODS = ["GET", "POST", "OPTIONS"].join(", ");
 
-  const DEFAULT_HEADERS = [
-    "Content-Type", 
-    "X-Requested-With", 
-    "x-api-key",
-    "Authorization",
-  ].join(", ");
+const DEFAULT_HEADERS = [
+  "Content-Type", 
+  "X-Requested-With", 
+  "x-api-key",
+  "Authorization",
+].join(", ");
 
-  function decideOrigin(origin?: string | null) {
-    if (!origin) return null;
-    if (!allowedOrigins) return null;
-    return allowedOrigins.has(origin) ? origin : null; 
+function decideOrigin(origin?: string | null) {
+  if (!origin) return null;
+  if (!allowedOrigins) return null;
+  return allowedOrigins.has(origin) ? origin : null; 
+}
+
+function withCors(req: NextRequest, res: NextResponse) {
+  const origin = req.headers.get("origin");
+  const allowOrigin = decideOrigin(origin);
+
+  if (allowedOrigins && origin && !allowOrigin) {
+    // Origin not allowed, return 403 forbidden
+    return new NextResponse(JSON.stringify({ error: "Origin not allowed" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
-  function withCors(req: NextRequest, res: NextResponse) {
-    const origin = req.headers.get("origin");
-    const allowOrigin = decideOrigin(origin);
-
-    if (allowedOrigins && origin && !allowOrigin) {
-      // Origin not allowed, return 403 forbidden
-      return new NextResponse(JSON.stringify({ error: "Origin not allowed" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-   if  (allowOrigin) {
-      res.headers.set("Access-Control-Allow-Origin", allowOrigin);
-      res.headers.set("Vary", "Origin");
-      // Alow credentials if needed (cookies, auth headers)
-      res.headers.set("Access-Control-Allow-Credentials", "true");
-      res.headers.set("Access-Control-Allow-Methods", DEFAULT_METHODS);
-      res.headers.set("Access-Control-Allow-Headers", DEFAULT_METHODS);
-      res.headers.set("Access-Control-Max-Age", "600"); // Cashe preflight for 10 minutes
-
-      res.headers.set(
-        "Access-Control-Expose-Headers",
-        ["Retry-After", "X-RateLimit-Limit"].join(", "),
-      );
-   }
-
-   return res;
+  if (allowOrigin) {
+    res.headers.set("Access-Control-Allow-Origin", allowOrigin);
+    res.headers.set("Vary", "Origin");
+    res.headers.set("Access-Control-Allow-Credentials", "true");
+    res.headers.set("Access-Control-Allow-Methods", DEFAULT_METHODS);
+    res.headers.set("Access-Control-Allow-Headers", DEFAULT_HEADERS); // ✅ Fixed here
+    res.headers.set("Access-Control-Max-Age", "600");
+    res.headers.set(
+      "Access-Control-Expose-Headers",
+      ["Retry-After", "X-RateLimit-Limit"].join(", ")
+    );
   }
+
+  return res;
+}
 
 export function middleware(req: NextRequest) {
   if (req.method === "OPTIONS") {
-    //Preflight request
-    const res = new NextResponse(null, { status: 204});
+    // Preflight request
+    const res = new NextResponse(null, { status: 204 });
     return withCors(req, res);
   }
 
