@@ -6,7 +6,7 @@ export function TopNav() {
     return (
         <nav className="flex w-full items-center justify-between border-b p-4 text-xl
         font-semibold">
-            <div>CodeVault</div>
+            <div>MotoRide.Pro</div>
             <div>
                  <SignedOut>
                     <div className="cursor-pointer">

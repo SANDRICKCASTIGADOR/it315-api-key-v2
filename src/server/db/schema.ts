@@ -16,19 +16,18 @@ export const apiKeys = createTable("api_keys", {
   revoked: boolean("revoked").notNull().default(false),
 });
 
-// Hardware Specs table
+// Hardware Specs table (Motor Listings)
 export const hardwareSpecs = createTable("hardware_specs", {
   id: text("id").primaryKey(),
   apiKeyId: text("api_key_id")
     .notNull()
     .references(() => apiKeys.id, { onDelete: "cascade" }),
-  imageUrl: text("image_url"),
-  brandname: varchar("brandname", { length: 100 }),
-  processor: varchar("processor", { length: 200 }),
-  graphic: varchar("graphic", { length: 200 }),
-  display: varchar("display", { length: 150 }),
-  ram: varchar("ram", { length: 50 }),
-  storage: varchar("storage", { length: 100 }),
+  frontView: text("front_view"),
+  sideView: text("side_view"),
+  backView: text("back_view"),
+  description: text("description"),
+  monthlyPrice: varchar("monthly_price", { length: 50 }),
+  fullyPaidPrice: varchar("fully_paid_price", { length: 50 }),
   createdAt: timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),

@@ -18,13 +18,12 @@ export function sha256(data: string) {
 }
 
 export interface HardwareSpecs {
-    imageUrl?: string;
-    brandname?: string;
-    processor?: string;
-    graphic?: string;
-    display?: string;
-    ram?: string;
-    storage?: string;
+    frontView?: string;
+    sideView?: string;
+    backView?: string;
+    description?: string;
+    monthlyPrice?: string;
+    fullyPaidPrice?: string;
 }
 
 export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs) {
@@ -45,13 +44,12 @@ export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs)
         await db.insert(hardwareSpecs).values({
             id: specId,
             apiKeyId: keyId,
-            imageUrl: hardwareSpecsData.imageUrl,
-            brandname: hardwareSpecsData.brandname,
-            processor: hardwareSpecsData.processor,
-            graphic: hardwareSpecsData.graphic,
-            display: hardwareSpecsData.display,
-            ram: hardwareSpecsData.ram,
-            storage: hardwareSpecsData.storage,
+            frontView: hardwareSpecsData.frontView,
+            sideView: hardwareSpecsData.sideView,
+            backView: hardwareSpecsData.backView,
+            description: hardwareSpecsData.description,
+            monthlyPrice: hardwareSpecsData.monthlyPrice,
+            fullyPaidPrice: hardwareSpecsData.fullyPaidPrice,
         });
     }
     
@@ -74,13 +72,12 @@ export async function listKeys() {
             createdAt: apiKeys.createdAt,
             revoked: apiKeys.revoked,
             // Hardware specs
-            imageUrl: hardwareSpecs.imageUrl,
-            brandname: hardwareSpecs.brandname,
-            processor: hardwareSpecs.processor,
-            graphic: hardwareSpecs.graphic,
-            display: hardwareSpecs.display,
-            ram: hardwareSpecs.ram,
-            storage: hardwareSpecs.storage,
+            frontView: hardwareSpecs.frontView,
+            sideView: hardwareSpecs.sideView,
+            backView: hardwareSpecs.backView,
+            description: hardwareSpecs.description,
+            monthlyPrice: hardwareSpecs.monthlyPrice,
+            fullyPaidPrice: hardwareSpecs.fullyPaidPrice,
         })
         .from(apiKeys)
         .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
@@ -115,13 +112,12 @@ export async function updateKeySpecs(
         const res = await db
             .update(hardwareSpecs)
             .set({
-                imageUrl: hardwareSpecsData.imageUrl,
-                brandname: hardwareSpecsData.brandname,
-                processor: hardwareSpecsData.processor,
-                graphic: hardwareSpecsData.graphic,
-                display: hardwareSpecsData.display,
-                ram: hardwareSpecsData.ram,
-                storage: hardwareSpecsData.storage,
+                frontView: hardwareSpecsData.frontView,
+                sideView: hardwareSpecsData.sideView,
+                backView: hardwareSpecsData.backView,
+                description: hardwareSpecsData.description,
+                monthlyPrice: hardwareSpecsData.monthlyPrice,
+                fullyPaidPrice: hardwareSpecsData.fullyPaidPrice,
             })
             .where(eq(hardwareSpecs.apiKeyId, apiKeyId));
         
@@ -132,13 +128,12 @@ export async function updateKeySpecs(
         await db.insert(hardwareSpecs).values({
             id: specId,
             apiKeyId,
-            imageUrl: hardwareSpecsData.imageUrl,
-            brandname: hardwareSpecsData.brandname,
-            processor: hardwareSpecsData.processor,
-            graphic: hardwareSpecsData.graphic,
-            display: hardwareSpecsData.display,
-            ram: hardwareSpecsData.ram,
-            storage: hardwareSpecsData.storage,
+            frontView: hardwareSpecsData.frontView,
+            sideView: hardwareSpecsData.sideView,
+            backView: hardwareSpecsData.backView,
+            description: hardwareSpecsData.description,
+            monthlyPrice: hardwareSpecsData.monthlyPrice,
+            fullyPaidPrice: hardwareSpecsData.fullyPaidPrice,
         });
         
         return true;
@@ -155,13 +150,12 @@ export async function getKeyDetails(id: string) {
             revoked: apiKeys.revoked,
             hashedKey: apiKeys.hashedKey,
             // Hardware specs
-            imageUrl: hardwareSpecs.imageUrl,
-            brandname: hardwareSpecs.brandname,
-            processor: hardwareSpecs.processor,
-            graphic: hardwareSpecs.graphic,
-            display: hardwareSpecs.display,
-            ram: hardwareSpecs.ram,
-            storage: hardwareSpecs.storage,
+            frontView: hardwareSpecs.frontView,
+            sideView: hardwareSpecs.sideView,
+            backView: hardwareSpecs.backView,
+            description: hardwareSpecs.description,
+            monthlyPrice: hardwareSpecs.monthlyPrice,
+            fullyPaidPrice: hardwareSpecs.fullyPaidPrice,
         })
         .from(apiKeys)
         .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
@@ -179,13 +173,12 @@ export async function verifyKey(apiKey: string) {
             name: apiKeys.name,
             revoked: apiKeys.revoked,
             // Hardware specs
-            imageUrl: hardwareSpecs.imageUrl,
-            brandname: hardwareSpecs.brandname,
-            processor: hardwareSpecs.processor,
-            graphic: hardwareSpecs.graphic,
-            display: hardwareSpecs.display,
-            ram: hardwareSpecs.ram,
-            storage: hardwareSpecs.storage,
+            frontView: hardwareSpecs.frontView,
+            sideView: hardwareSpecs.sideView,
+            backView: hardwareSpecs.backView,
+            description: hardwareSpecs.description,
+            monthlyPrice: hardwareSpecs.monthlyPrice,
+            fullyPaidPrice: hardwareSpecs.fullyPaidPrice,
         })
         .from(apiKeys)
         .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
@@ -201,13 +194,12 @@ export async function verifyKey(apiKey: string) {
         keyId: row.id,
         name: row.name,
         hardwareSpecs: {
-            imageUrl: row.imageUrl,
-            brandname: row.brandname,
-            processor: row.processor,
-            graphic: row.graphic,
-            display: row.display,
-            ram: row.ram,
-            storage: row.storage,
+            frontView: row.frontView,
+            sideView: row.sideView,
+            backView: row.backView,
+            description: row.description,
+            monthlyPrice: row.monthlyPrice,
+            fullyPaidPrice: row.fullyPaidPrice,
         }
     };
 }

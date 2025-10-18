@@ -11,7 +11,7 @@ import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 
 const baseUrl =
-  typeof window !== "undefined" ? window.location.origin : "https://it315-api-key-v2-335b.vercel.app/";
+  typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
 
 export default function DocsPage() {
   const [key, setKey] = useState("");

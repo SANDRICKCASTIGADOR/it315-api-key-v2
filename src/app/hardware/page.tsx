@@ -1,288 +1,409 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "~/components/ui/button";
-import { ArrowLeft, Monitor, Cpu, HardDrive } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
-import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { Bike, Upload, ArrowLeft, CheckCircle } from "lucide-react";
+import { useState } from "react";
 
-type KeyItem = {
-  id: string;
-  name?: string;
-  imageUrl?: string;
-  masked: string;
-  createdAt: string;
-  revoked: boolean;
-  brandname?: string;
-  processor?: string;
-  graphic?: string;
-  display?: string;
-  ram?: string;
-  storage?: string;
+type MotorData = {
+  apiKeyId: string;
+  motorName: string;
+  description: string;
+  monthlyPrice: string;
+  fullyPaidPrice: string;
+  frontView: string;
+  sideView: string;
+  backView: string;
 };
 
-export default function HardwarePage() {
-  const [items, setItems] = useState<KeyItem[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function MotorUploadPage() {
+  const [motorData, setMotorData] = useState<MotorData>({
+    apiKeyId: "",
+    motorName: "",
+    description: "",
+    monthlyPrice: "",
+    fullyPaidPrice: "",
+    frontView: "",
+    sideView: "",
+    backView: "",
+  });
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState({
+    front: false,
+    side: false,
+    back: false,
+  });
 
-  async function load() {
-    setLoading(true);
+  const updateField = (field: keyof MotorData, value: string) => {
+    setMotorData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Image upload using UTApi server-side approach
+  const handleImageUpload = async (file: File, view: 'front' | 'side' | 'back') => {
+    setUploadingImages(prev => ({ ...prev, [view]: true }));
+    
     try {
-      const res = await fetch("/api/keys", { cache: "no-store" });
-      if (!res.ok) {
-        console.error("Failed to load hardware specs:", res.status);
-        setItems([]);
+      // Use a separate API route for uploading
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      console.log('Upload result:', result);
+
+      const fileUrl = result.url;
+
+      if (!fileUrl) {
+        throw new Error('No URL in response');
+      }
+
+      // Update the corresponding view URL
+      const fieldMap = {
+        front: 'frontView',
+        side: 'sideView',
+        back: 'backView'
+      };
+      
+      updateField(fieldMap[view] as keyof MotorData, fileUrl);
+
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploadingImages(prev => ({ ...prev, [view]: false }));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, view: 'front' | 'side' | 'back') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file');
         return;
       }
-      const data = await res.json();
-      setItems(data.items ?? []);
-    } catch (error) {
-      console.error("Failed to load hardware specs:", error);
-      setItems([]);
-    } finally {
-      setLoading(false);
+      
+      // Validate file size (max 4MB)
+      if (file.size > 4 * 1024 * 1024) {
+        alert('Image size should be less than 4MB');
+        return;
+      }
+      
+      handleImageUpload(file, view);
     }
-  }
+  };
 
-  useEffect(() => {
-    load();
-  }, []);
+  const handleSubmit = async () => {
+    if (!motorData.apiKeyId.trim()) {
+      alert("Please enter API Key ID");
+      return;
+    }
+    if (!motorData.motorName.trim()) {
+      alert("Please enter motor name");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const res = await fetch("/api/motors", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(motorData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setSuccess(true);
+        setTimeout(() => {
+          setSuccess(false);
+          setMotorData({
+            apiKeyId: "",
+            motorName: "",
+            description: "",
+            monthlyPrice: "",
+            fullyPaidPrice: "",
+            frontView: "",
+            sideView: "",
+            backView: "",
+          });
+        }, 3000);
+      } else {
+        alert(`Error: ${data.error ?? "Failed to upload motor"}`);
+      }
+    } catch (error) {
+      console.error("Error uploading motor:", error);
+      alert("Error uploading motor");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 relative overflow-hidden">
-      {/* Animated background elements */}
+    <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/3 left-1/2 w-60 h-60 bg-blue-500/10 rounded-full blur-2xl animate-pulse delay-500"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orange-600/15 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gray-700/15 rounded-full blur-3xl animate-pulse"></div>
       </div>
-      
-      <SignedOut>
-        <div className="relative flex items-center justify-center min-h-screen p-6">
-          <div className="absolute inset-0 z-0">
-            <div
-              className="w-full h-full bg-cover bg-center bg-no-repeat"
-              style={{
-                backgroundImage: `url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=2072&q=80')`, 
-              }}
-            ></div>
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-blue-900/60 to-indigo-900/80"></div>
-          </div>
 
-          <div className="relative z-20 text-center bg-white/5 backdrop-blur-2xl rounded-3xl p-16 shadow-2xl border border-white/10 max-w-2xl mx-4 hover:bg-white/8 transition-all duration-500">
-            <div className="w-20 h-20 mx-auto mb-8 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/10">
-              <Monitor className="w-10 h-10 text-purple-300" />
-            </div>
-
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-white via-purple-100 to-indigo-200 bg-clip-text text-transparent mb-6 drop-shadow-2xl">
-              Hardware Specifications
-            </h1>
-
-            <p className="text-blue-100/90 mb-10 leading-relaxed text-xl drop-shadow-lg max-w-lg mx-auto">
-              View detailed hardware information for all your API keys in one place.
-            </p>
-
-            <SignInButton mode="modal">
-              <div className="group relative px-10 py-5 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 hover:from-purple-400 hover:via-indigo-400 hover:to-blue-400 text-white rounded-2xl font-semibold text-xl shadow-2xl transition-all duration-300 transform hover:scale-105 hover:shadow-purple-500/25 cursor-pointer border border-white/20 overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                <span className="relative">Sign In to Continue</span>
+      <div className="relative z-10 mx-auto max-w-5xl space-y-10 p-8">
+        {/* Header */}
+        <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+          <div className="space-y-2">
+            <h1 className="flex items-center gap-3 text-4xl font-bold bg-gradient-to-r from-white to-orange-300 bg-clip-text text-transparent">
+              <div className="p-3 bg-gradient-to-br from-orange-600/40 to-orange-700/40 rounded-xl backdrop-blur-sm border border-orange-500/40">
+                <Bike className="h-8 w-8 text-orange-400" />
               </div>
-            </SignInButton>
+              Upload Motor
+            </h1>
+            <p className="text-gray-300 text-lg ml-1">
+              Add new motorcycle with images and specifications
+            </p>
           </div>
+          <a href="/keys">
+            <button className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-all">
+              <ArrowLeft className="h-5 w-5" />
+              Back to Keys
+            </button>
+          </a>
         </div>
-      </SignedOut>
 
-      <SignedIn>
-        <div className="relative z-10 mx-auto max-w-7xl space-y-10 p-8">
-          {/* Header */}
-          <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+        {/* Success Message */}
+        {success && (
+          <div className="bg-gradient-to-r from-green-600/20 to-emerald-600/20 border border-green-500/50 rounded-xl p-6 flex items-center gap-3">
+            <CheckCircle className="h-6 w-6 text-green-400" />
+            <div>
+              <p className="text-green-200 font-semibold text-lg">Motor uploaded successfully!</p>
+              <p className="text-green-300 text-sm">Your motor has been added to the database.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Upload Form */}
+        <div className="bg-gradient-to-br from-gray-800 to-gray-900 backdrop-blur-xl border border-gray-700 shadow-2xl rounded-2xl overflow-hidden">
+          <div className="p-8 bg-gradient-to-r from-gray-800/50 to-gray-900/50 border-b border-gray-700">
+            <h2 className="text-2xl text-white flex items-center gap-3 font-semibold mb-2">
+              <Upload className="h-6 w-6 text-orange-400" />
+              Motor Details
+            </h2>
+            <p className="text-gray-400 text-lg">
+              Fill in all the details and upload images
+            </p>
+          </div>
+
+          <div className="space-y-8 p-8">
+            {/* API Key ID */}
             <div className="space-y-2">
-              <h1 className="flex items-center gap-3 text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-                <div className="p-3 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl backdrop-blur-sm border border-white/10">
-                  <Monitor className="h-8 w-8 text-purple-300" />
-                </div>
-                Hardware Specifications
-              </h1>
-              <p className="text-slate-300 text-lg ml-1">
-                View detailed device specifications for all API keys
-              </p>
+              <label className="text-sm font-medium text-gray-300">API Key ID *</label>
+              <input
+                placeholder="Enter API Key ID (e.g., abc123-def456-...)"
+                value={motorData.apiKeyId}
+                onChange={(e) => updateField('apiKeyId', e.target.value)}
+                className="w-full bg-gray-700/50 border border-gray-600 text-white placeholder:text-gray-500 rounded-lg py-3 px-4 text-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition"
+              />
+              <p className="text-xs text-gray-500">Get this from the API Keys page</p>
             </div>
-            <Link href={"/"}>
-              <Button variant={"outline"} className="flex items-center bg-gradient-to-r from-blue-500/10 to-indigo-500/10 hover:from-blue-500/20 hover:to-indigo-500/20 border-blue-400/30 text-blue-200 gap-3 px-6 py-3 text-lg rounded-xl backdrop-blur-sm transition-all duration-300 hover:scale-105">
-                <ArrowLeft className="h-5 w-5" />
-                Back to API Keys
-              </Button>
-            </Link>
-          </div>
 
-          {/* Hardware Specifications Table */}
-          <Card className="bg-white/5 backdrop-blur-xl border-white/10 shadow-2xl rounded-2xl overflow-hidden hover:bg-white/8 transition-all duration-500">
-            <CardHeader className="p-8 bg-gradient-to-r from-purple-500/5 to-indigo-500/5">
-              <CardTitle className="text-2xl text-white flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-lg flex items-center justify-center">
-                  <Monitor className="h-4 w-4 text-purple-300" />
-                </div>
-                Device Hardware Information
-              </CardTitle>
-              <CardDescription className="text-slate-300 text-lg">
-                Complete hardware specifications for each API key
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex items-center justify-center py-16">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400"></div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-white/10 bg-white/5">
-                        <TableHead className="text-slate-200 font-semibold py-4 px-6">Key Name</TableHead>
-                        <TableHead className="text-slate-200 font-semibold py-4">Device Image</TableHead>
-                        <TableHead className="text-slate-200 font-semibold py-4">Brand</TableHead>
-                        <TableHead className="text-slate-200 font-semibold py-4">Processor</TableHead>
-                        <TableHead className="text-slate-200 font-semibold py-4">Graphics</TableHead>
-                        <TableHead className="text-slate-200 font-semibold py-4">Display</TableHead>
-                        <TableHead className="text-slate-200 font-semibold py-4">Memory</TableHead>
-                        <TableHead className="text-slate-200 font-semibold py-4 px-6">Storage</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((row, index) => (
-                        <TableRow key={`specs-${row.id}`} className="border-white/5 hover:bg-white/5 transition-colors duration-200">
-                          <TableCell className="py-4 px-6 font-medium text-slate-200">
-                            {row.name || <span className="text-slate-500 italic">Unnamed Key #{index + 1}</span>}
-                          </TableCell>
-                          <TableCell className="py-4">
-                            {row.imageUrl ? (
-                              <div className="w-20 h-20 rounded-lg overflow-hidden border border-white/10 bg-black/20 shadow-lg">
-                                <img 
-                                  src={row.imageUrl} 
-                                  alt="Device" 
-                                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const parent = target.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-500 bg-slate-800/50"><svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg></div>';
-                                    }
-                                  }}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-20 h-20 rounded-lg border border-white/10 bg-slate-500/10 flex items-center justify-center">
-                                <Monitor className="h-8 w-8 text-slate-500" />
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-4 text-slate-300">
-                            {row.brandname ? (
-                              <div className="flex items-center gap-2">
-                                <Monitor className="h-4 w-4 text-blue-400" />
-                                <span>{row.brandname}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 text-sm">Not specified</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-4 text-slate-300 max-w-[150px]">
-                            {row.processor ? (
-                              <div className="flex items-center gap-2">
-                                <Cpu className="h-4 w-4 text-green-400 flex-shrink-0" />
-                                <span className="truncate" title={row.processor}>{row.processor}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 text-sm">Not specified</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-4 text-slate-300 max-w-[150px]">
-                            {row.graphic ? (
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-purple-400 rounded-sm flex-shrink-0"></div>
-                                <span className="truncate" title={row.graphic}>{row.graphic}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 text-sm">Not specified</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-4 text-slate-300 max-w-[120px]">
-                            {row.display ? (
-                              <span className="truncate" title={row.display}>{row.display}</span>
-                            ) : (
-                              <span className="text-slate-500 text-sm">Not specified</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-4 text-slate-300">
-                            {row.ram ? (
-                              <div className="flex items-center gap-2">
-                                <HardDrive className="h-4 w-4 text-orange-400" />
-                                <span>{row.ram}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 text-sm">Not specified</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-4 px-6 text-slate-300">
-                            {row.storage ? (
-                              <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-cyan-400 rounded-full flex-shrink-0"></div>
-                                <span>{row.storage}</span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-500 text-sm">Not specified</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {items.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center text-lg text-slate-400 py-12">
-                            <div className="flex flex-col items-center gap-4">
-                              <div className="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center">
-                                <Monitor className="h-8 w-8 text-purple-500" />
-                              </div>
-                              <div>
-                                <p className="font-medium mb-1">No Hardware Specifications</p>
-                                <p className="text-sm text-slate-500">Add hardware specs when creating API keys to see them here</p>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}     
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            {/* Motor Name */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">Motor Name *</label>
+              <input
+                placeholder="e.g., Yamaha NMAX 155"
+                value={motorData.motorName}
+                onChange={(e) => updateField('motorName', e.target.value)}
+                className="w-full bg-gray-700/50 border border-gray-600 text-white placeholder:text-gray-500 rounded-lg py-3 px-4 text-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition"
+              />
+            </div>
 
-          {/* Info Card */}
-          <div className="text-center p-8 bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10">
-            <div className="text-slate-300 text-lg leading-relaxed">
-              💡 <span className="font-semibold text-purple-300">Tip:</span> Hardware specifications help you track which devices are using each API key.
-              <br className="sm:hidden" />
-              <span className="text-slate-400"> Keep your device information up to date for better management and security monitoring.</span>
+            {/* Description */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300">Description</label>
+              <textarea
+                placeholder="Describe the motor..."
+                value={motorData.description}
+                onChange={(e) => updateField('description', e.target.value)}
+                className="w-full bg-gray-700/50 border border-gray-600 text-white placeholder:text-gray-500 rounded-lg py-3 px-4 text-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition h-24 resize-none"
+              />
+            </div>
+
+            {/* Images Upload */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Bike className="h-5 w-5 text-orange-500" />
+                Upload Images
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Front View */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">Front View</label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'front')}
+                      className="hidden"
+                      id="front-upload"
+                      disabled={uploadingImages.front}
+                    />
+                    <label
+                      htmlFor="front-upload"
+                      className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                        motorData.frontView
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-gray-600 bg-gray-700/30 hover:bg-gray-700/50'
+                      } ${uploadingImages.front ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {uploadingImages.front ? (
+                        <div className="flex flex-col items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
+                          <p className="text-sm text-gray-400">Uploading...</p>
+                        </div>
+                      ) : motorData.frontView ? (
+                        <img src={motorData.frontView} alt="Front" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <Upload className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-sm text-gray-400">Click to upload</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Side View */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">Side View</label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'side')}
+                      className="hidden"
+                      id="side-upload"
+                      disabled={uploadingImages.side}
+                    />
+                    <label
+                      htmlFor="side-upload"
+                      className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                        motorData.sideView
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-gray-600 bg-gray-700/30 hover:bg-gray-700/50'
+                      } ${uploadingImages.side ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {uploadingImages.side ? (
+                        <div className="flex flex-col items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
+                          <p className="text-sm text-gray-400">Uploading...</p>
+                        </div>
+                      ) : motorData.sideView ? (
+                        <img src={motorData.sideView} alt="Side" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <Upload className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-sm text-gray-400">Click to upload</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Back View */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">Back View</label>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileChange(e, 'back')}
+                      className="hidden"
+                      id="back-upload"
+                      disabled={uploadingImages.back}
+                    />
+                    <label
+                      htmlFor="back-upload"
+                      className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                        motorData.backView
+                          ? 'border-green-500 bg-green-500/10'
+                          : 'border-gray-600 bg-gray-700/30 hover:bg-gray-700/50'
+                      } ${uploadingImages.back ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {uploadingImages.back ? (
+                        <div className="flex flex-col items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
+                          <p className="text-sm text-gray-400">Uploading...</p>
+                        </div>
+                      ) : motorData.backView ? (
+                        <img src={motorData.backView} alt="Back" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <Upload className="h-8 w-8 text-gray-500 mb-2" />
+                          <p className="text-sm text-gray-400">Click to upload</p>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-white">Payment Options</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">Monthly Price</label>
+                  <input
+                    type="number"
+                    placeholder="Enter price"
+                    value={motorData.monthlyPrice}
+                    onChange={(e) => updateField('monthlyPrice', e.target.value)}
+                    className="w-full bg-gray-700/50 border border-gray-600 text-white placeholder:text-gray-500 rounded-lg py-3 px-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-300">Fully Paid Price</label>
+                  <input
+                    type="number"
+                    placeholder="Enter price"
+                    value={motorData.fullyPaidPrice}
+                    onChange={(e) => updateField('fullyPaidPrice', e.target.value)}
+                    className="w-full bg-gray-700/50 border border-gray-600 text-white placeholder:text-gray-500 rounded-lg py-3 px-4 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-end pt-4">
+              <button
+                onClick={handleSubmit}
+                disabled={uploading}
+                className="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white flex items-center gap-2 px-8 py-3 rounded-lg shadow-lg hover:shadow-orange-600/50 transition-all duration-300 border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold"
+              >
+                <Upload className="h-5 w-5" />
+                {uploading ? "Uploading..." : "Upload Motor"}
+              </button>
             </div>
           </div>
         </div>
-      </SignedIn>
+
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent"></div>
+
+        <div className="text-center p-8 bg-gradient-to-br from-gray-800 to-gray-900 backdrop-blur-xl rounded-lg border border-gray-700">
+          <div className="text-gray-300 text-lg leading-relaxed">
+            <span className="font-semibold text-orange-400">Note:</span> All uploaded images are stored securely via UploadThing. Make sure to fill in the API Key ID from your keys page.
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

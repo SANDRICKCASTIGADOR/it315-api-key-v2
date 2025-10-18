@@ -1,7 +1,7 @@
 // app/api/keys/route.ts
 import { NextRequest } from "next/server";
 import { insertKey, listKeys, revokeKey } from "~/server/keys";
-import { CreateKeySchema, DeleteKeySchema } from "~/server/validation";
+import { CreateApiKeySchema, DeleteKeySchema } from "~/server/validation";
 import { z } from "zod";
 
 export async function POST(req: NextRequest) {
@@ -9,21 +9,22 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log("Received body:", body);
    
-    const validatedData = CreateKeySchema.parse(body);
-    const { name, hardwareSpecs } = validatedData;
+    // CreateKeySchema should only have { name: string }
+    const validatedData = CreateApiKeySchema.parse(body);
+    const { name } = validatedData;
     
-    const result = await insertKey(name, hardwareSpecs);
+    const result = await insertKey(name);
     
     return Response.json({
       id: result.id,
       name: result.name,
       key: result.key,
       last4: result.last4,
-      hardwareSpecs: result.hardwareSpecs
+      // createdAt: result.createdAt,
     }, { status: 201 });
     
   } catch (error) {
-    console.error("Error creating key:", error);
+    console.error("Error creating API key:", error);
     
     if (error instanceof z.ZodError) {
       return Response.json(
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
     
     return Response.json(
       { 
-        error: "Failed to create key", 
+        error: "Failed to create API key", 
         details: error instanceof Error ? error.message : "Unknown error" 
       },
       { status: 500 }
@@ -54,22 +55,14 @@ export async function GET() {
       name: key.name,
       masked: `****${key.last4}`,
       createdAt: key.createdAt,
-      revoked: key.revoked,
-      imageUrl: key.imageUrl,
-      brandname: key.brandname,
-      processor: key.processor,
-      graphic: key.graphic,
-      display: key.display,
-      ram: key.ram,
-      storage: key.storage,
     }));
     
-    return Response.json({ items });
+    return Response.json({ items }, { status: 200 });
     
   } catch (error) {
-    console.error("Error listing keys:", error);
+    console.error("Error listing API keys:", error);
     return Response.json(
-      { error: "Failed to list keys" },
+      { error: "Failed to list API keys" },
       { status: 500 }
     );
   }
@@ -89,13 +82,13 @@ export async function DELETE(req: NextRequest) {
     const success = await revokeKey(validatedData.keyId);
     
     if (!success) {
-      return Response.json({ error: "Key not found or already revoked" }, { status: 404 });
+      return Response.json({ error: "API key not found or already revoked" }, { status: 404 });
     }
     
-    return Response.json({ success: true });
+    return Response.json({ success: true }, { status: 200 });
     
   } catch (error) {
-    console.error("Error revoking key:", error);
+    console.error("Error revoking API key:", error);
     
     if (error instanceof z.ZodError) {
       return Response.json(
@@ -108,7 +101,7 @@ export async function DELETE(req: NextRequest) {
     }
     
     return Response.json(
-      { error: "Failed to revoke key" },
+      { error: "Failed to revoke API key" },
       { status: 500 }
     );
   }
