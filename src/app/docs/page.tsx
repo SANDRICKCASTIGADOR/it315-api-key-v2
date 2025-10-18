@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { KeyRound, BookOpen, Code2, Network } from "lucide-react";
 import { Button } from "~/components/ui/button";
@@ -10,54 +10,86 @@ import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 
-const baseUrl = typeof window !== "undefined" 
-  ? window.location.origin 
-  : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
 export default function DocsPage() {
+  const [baseUrl, setBaseUrl] = useState("https://it315-api-key-v2-335b.vercel.app");
   const [key, setKey] = useState("");
   const [out, setOut] = useState("");
-  const [postBody, setPostBody] = useState("Honda Click");
+  const [postBody, setPostBody] = useState('{"hello":"world"}');
+
+  useEffect(() => {
+    // Set the base URL on the client side
+    if (typeof window !== "undefined") {
+      setBaseUrl(window.location.origin);
+    }
+  }, []);
 
   async function runGET() {
-    const res = await fetch(`${baseUrl}/api/echo`, {
-      method: "GET",
-      headers: { "x-api-key": key },
-    });
-    setOut(JSON.stringify(await res.json(), null, 2));
+    try {
+      setOut("Loading...");
+      const res = await fetch(`${baseUrl}/api/ping`, {
+        method: "GET",
+        headers: { "x-api-key": key },
+      });
+      
+      const data = await res.json();
+      setOut(JSON.stringify({
+        status: res.status,
+        data: data
+      }, null, 2));
+    } catch (error) {
+      setOut(`Error: ${error instanceof Error ? error.message : 'Request failed'}`);
+    }
   }
 
   async function runPOST() {
-    const res = await fetch(`${baseUrl}/api/echo`, {
-      method: "POST",
-      headers: { 
-        "x-api-key": key, 
-        "content-type": 
-        "application/json" 
-      },
-      body: JSON.stringify({ postBody }),
-    });
-    setOut(JSON.stringify(await res.json(), null, 2));
+    try {
+      setOut("Loading...");
+      
+      // Parse the JSON input
+      let parsedBody;
+      try {
+        parsedBody = JSON.parse(postBody);
+      } catch (e) {
+        setOut("Error: Invalid JSON in POST body");
+        return;
+      }
+
+      const res = await fetch(`${baseUrl}/api/echo`, {
+        method: "POST",
+        headers: { 
+          "x-api-key": key, 
+          "content-type": "application/json" 
+        },
+        body: JSON.stringify(parsedBody),
+      });
+      
+      const data = await res.json();
+      setOut(JSON.stringify({
+        status: res.status,
+        data: data
+      }, null, 2));
+    } catch (error) {
+      setOut(`Error: ${error instanceof Error ? error.message : 'Request failed'}`);
+    }
   }
 
   async function runOPTIONS() {
-    const res = await fetch(`${baseUrl}/api/echo`, {
-      method: "OPTIONS",
-      // headers: { 
-      //   Origin: "http://localhost:3000",
-      //   "Access-Control-Request-Method": "POST",
-      //   "Access-Control-Request-Headers": "x-api-key, content-type",
-      // },   
-    });
-    setOut(
-      `Status: ${res.status}\n ` +
-       Array.from(res.headers.entries())
-       .map(([key, value]) => `${key}: ${value}`)
-       .join("\n"),
-    );
+    try {
+      setOut("Loading...");
+      const res = await fetch(`${baseUrl}/api/echo`, {
+        method: "OPTIONS",
+      });
+      
+      setOut(
+        `Status: ${res.status}\n\nHeaders:\n` +
+        Array.from(res.headers.entries())
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\n")
+      );
+    } catch (error) {
+      setOut(`Error: ${error instanceof Error ? error.message : 'Request failed'}`);
+    }
   }
-
-   
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden p-6">
@@ -106,7 +138,7 @@ export default function DocsPage() {
             <div>
               <h3 className="font-semibold text-white">Base URL</h3>
               <pre className="bg-black/40 text-blue-200 text-sm p-3 rounded-lg mt-2 overflow-x-auto border border-gray-700">
-                <code>{baseUrl + "/api"}</code>
+                <code>{baseUrl}/api</code>
               </pre>
             </div>
 
@@ -119,7 +151,7 @@ export default function DocsPage() {
               </pre>
               <pre className="bg-black/40 text-blue-200 text-sm p-3 rounded-lg overflow-x-auto border border-gray-700">
                 <code>{`const r = await fetch("${baseUrl}/api/ping", {
-  headers: { "x-api-key": process.env.MY_KEY! }
+  headers: { "x-api-key": process.env.MY_KEY }
 });`}</code>
               </pre>
             </div>
@@ -129,17 +161,17 @@ export default function DocsPage() {
             <div className="space-y-4">
               <h3 className="font-semibold text-white">POST /api/echo</h3>
               <pre className="bg-black/40 text-blue-200 text-sm p-3 rounded-lg overflow-x-auto border border-gray-700">
-                <code>{`curl -X POST 
-  -H "x-api-key: <YOUR_KEY>" 
-  -H "content-type: application/json" 
-  -d '{"hello":"world"}' 
+                <code>{`curl -X POST \\
+  -H "x-api-key: <YOUR_KEY>" \\
+  -H "content-type: application/json" \\
+  -d '{"hello":"world"}' \\
   ${baseUrl}/api/echo`}</code>
               </pre>
               <pre className="bg-black/40 text-blue-200 text-sm p-3 rounded-lg overflow-x-auto border border-gray-700">
                 <code>{`const r = await fetch("${baseUrl}/api/echo", {
   method: "POST",
   headers: { 
-    "x-api-key": process.env.MY_KEY!, 
+    "x-api-key": process.env.MY_KEY,
     "content-type": "application/json" 
   },
   body: JSON.stringify({ hello: "world" })
@@ -163,46 +195,69 @@ export default function DocsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-6">
-            <Input
-              placeholder="Paste your API key (sk_...)"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
-            />
+            <div>
+              <Label className="text-sm font-medium text-gray-300 mb-2 block">API Key</Label>
+              <Input
+                placeholder="Paste your API key (sk_...)"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+              />
+            </div>
 
             <div className="flex gap-2">
-              <Button onClick={runGET} className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white border-0">
+              <Button 
+                onClick={runGET} 
+                disabled={!key}
+                className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white border-0 disabled:opacity-50"
+              >
                 Test GET /api/ping
               </Button>
-              <Button onClick={runPOST} className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white border-0">
+              <Button 
+                onClick={runPOST} 
+                disabled={!key}
+                className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white border-0 disabled:opacity-50"
+              >
                 Test POST /api/echo
               </Button>
-              <Button onClick={runOPTIONS} className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white border-0">
+              <Button 
+                onClick={runOPTIONS} 
+                className="flex-1 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-white border-0"
+              >
                 Test OPTIONS
               </Button>
             </div>
 
             <div>
-              <Label className="text-sm font-medium text-gray-300">POST body (JSON)</Label>
+              <Label className="text-sm font-medium text-gray-300 mb-2 block">POST Body (JSON)</Label>
               <Textarea
                 rows={5}
                 value={postBody}
                 onChange={(e) => setPostBody(e.target.value)}
+                placeholder='{"hello":"world"}'
                 className="bg-gray-700/50 border-gray-600 text-white font-mono focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
               />
             </div>
 
             <div>
-              <Label className="text-sm font-medium text-gray-300">Response</Label>
+              <Label className="text-sm font-medium text-gray-300 mb-2 block">Response</Label>
               <Textarea
                 rows={10}
                 readOnly
                 value={out}
+                placeholder="Response will appear here..."
                 className="bg-black/40 border-gray-700 text-green-300 font-mono"
               />
             </div>
           </CardContent>
         </Card>
+
+        {/* Info Box */}
+        <div className="text-center p-8 bg-gradient-to-br from-gray-800 to-gray-900 backdrop-blur-xl rounded-lg border border-gray-700">
+          <div className="text-gray-300 text-lg leading-relaxed">
+            💡 <span className="font-semibold text-orange-400">Pro Tip:</span> Enter your API key above to test the endpoints. The response will show the status code and returned data.
+          </div>
+        </div>
       </div>
     </main>
   );
