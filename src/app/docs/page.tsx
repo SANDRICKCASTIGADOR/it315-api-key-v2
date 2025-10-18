@@ -11,7 +11,7 @@ import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 
 export default function DocsPage() {
-  const [baseUrl, setBaseUrl] = useState("https://it315-api-key-v2-637z.vercel.app");
+  const [baseUrl, setBaseUrl] = useState("https://it315-api-key-v2-335b.vercel.app");
   const [key, setKey] = useState("");
   const [out, setOut] = useState("");
   const [postBody, setPostBody] = useState('{"hello":"world"}');
