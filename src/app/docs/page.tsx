@@ -14,7 +14,7 @@ export default function DocsPage() {
   const [baseUrl, setBaseUrl] = useState("https://it315-api-key-v2-335b.vercel.app");
   const [key, setKey] = useState("");
   const [out, setOut] = useState("");
-  const [postBody, setPostBody] = useState('{"hello":"world"}');
+  const [postBody, setPostBody] = useState('Honda Click');
 
   useEffect(() => {
     // Set the base URL on the client side
@@ -26,7 +26,7 @@ export default function DocsPage() {
   async function runGET() {
     try {
       setOut("Loading...");
-      const res = await fetch(`${baseUrl}/api/ping`, {
+      const res = await fetch(`${baseUrl}/api/echo`, {
         method: "GET",
         headers: { "x-api-key": key },
       });
