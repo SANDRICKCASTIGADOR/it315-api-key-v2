@@ -5,13 +5,19 @@ import { apiKeys } from "~/server/db/schema";
 import { verifyKey } from "~/server/keys";
 import { ratelimiter } from "~/server/ratelimits";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-api-key",
+};
+
 export async function GET(req: NextRequest) {
     const apiKey = req.headers.get("x-api-key") ?? "";
     const result = await verifyKey(apiKey);
     const getImage = await db.select();
 
     if (!result.valid) {
-        return Response.json({ error: result.reason }, { status: 401});
+        return Response.json({ error: result.reason }, { status: 401, headers: corsHeaders});
     }
      
     const { success, remaining, limit, reset } = await ratelimiter.limit(apiKey);
@@ -25,6 +31,7 @@ export async function GET(req: NextRequest) {
                 ),
                 "X-RateLimit-Limit": String(limit),
                 "X-RateLimit-Remaining": String(remaining),
+                ...corsHeaders,
             },
         });
     }
@@ -36,6 +43,7 @@ export async function GET(req: NextRequest) {
             headers: {
                 "X-RateLimit-Limit": String(limit),
                 "X-RateLimit-Ramaining": String(Math.max(0, remaining)),
+                ...corsHeaders,
             },
         },
     );
@@ -46,7 +54,7 @@ export async function POST(req: NextRequest) {
   const result = await verifyKey(apiKey);
 
   if (!result.valid) {
-    return Response.json({ error: result.reason }, { status: 401});
+    return Response.json({ error: result.reason }, { status: 401, headers: corsHeaders});
   }
 
   const { success, remaining, limit, reset } = await ratelimiter.limit(apiKey);
@@ -60,10 +68,10 @@ export async function POST(req: NextRequest) {
                   ),
                   "X-RateLimit-Limit": String(limit),
                   "X-RateLimit-Remaining": String(remaining),
+                  ...corsHeaders,
               },
           });
       }
-
 
   const body = await req.json();
 
@@ -80,6 +88,7 @@ export async function POST(req: NextRequest) {
         headers: {
           "X-RateLimit-Limit": String(limit),
           "X-RateLimit-Ramaining": String(Math.max(0, remaining)),
+          ...corsHeaders,
         },
       },
     ); 
@@ -92,7 +101,15 @@ export async function POST(req: NextRequest) {
       headers: {
         "X-RateLimit-Limit": String(limit),
         "X-RateLimit-Ramaining": String(Math.max(0, remaining)),
+        ...corsHeaders,
       },
     },
   );
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
 }
