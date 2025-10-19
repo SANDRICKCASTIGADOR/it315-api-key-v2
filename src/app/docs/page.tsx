@@ -12,7 +12,7 @@ import { Textarea } from "~/components/ui/textarea";
 
 const baseUrl = typeof window !== "undefined" 
   ? window.location.origin 
-  : process.env.NEXT_PUBLIC_APP_URL || "https://it315-api-key-v2-637z.vercel.app";
+  : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 export default function DocsPage() {
   const [key, setKey] = useState("");
