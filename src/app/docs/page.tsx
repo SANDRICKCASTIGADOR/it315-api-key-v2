@@ -20,44 +20,50 @@ export default function DocsPage() {
   const [postBody, setPostBody] = useState("Honda Click");
 
   async function runGET() {
-    const res = await fetch(`${baseUrl}/api/echo`, {
-      method: "GET",
-      headers: { "x-api-key": key },
-    });
-    setOut(JSON.stringify(await res.json(), null, 2));
+    try {
+      const res = await fetch(`${baseUrl}/api/echo`, {
+        method: "GET",
+        headers: { "x-api-key": key },
+      });
+      const data = await res.json();
+      setOut(JSON.stringify(data, null, 2));
+    } catch (err: any) {
+      setOut(`Error: ${err.message}`);
+    }
   }
 
   async function runPOST() {
-    const res = await fetch(`${baseUrl}/api/echo`, {
-      method: "POST",
-      headers: { 
-        "x-api-key": key, 
-        "content-type": 
-        "application/json" 
-      },
-      body: JSON.stringify({ postBody }),
-    });
-    setOut(JSON.stringify(await res.json(), null, 2));
+    try {
+      const res = await fetch(`${baseUrl}/api/echo`, {
+        method: "POST",
+        headers: { 
+          "x-api-key": key, 
+          "content-type": "application/json" 
+        },
+        body: JSON.stringify({ postBody }),
+      });
+      const data = await res.json();
+      setOut(JSON.stringify(data, null, 2));
+    } catch (err: any) {
+      setOut(`Error: ${err.message}`);
+    }
   }
 
   async function runOPTIONS() {
-    const res = await fetch(`${baseUrl}/api/echo`, {
-      method: "OPTIONS",
-      // headers: { 
-      //   Origin: "http://localhost:3000",
-      //   "Access-Control-Request-Method": "POST",
-      //   "Access-Control-Request-Headers": "x-api-key, content-type",
-      // },   
-    });
-    setOut(
-      `Status: ${res.status}\n ` +
-       Array.from(res.headers.entries())
-       .map(([key, value]) => `${key}: ${value}`)
-       .join("\n"),
-    );
+    try {
+      const res = await fetch(`${baseUrl}/api/echo`, {
+        method: "OPTIONS",
+      });
+      setOut(
+        `Status: ${res.status}\n ` +
+         Array.from(res.headers.entries())
+         .map(([key, value]) => `${key}: ${value}`)
+         .join("\n"),
+      );
+    } catch (err: any) {
+      setOut(`Error: ${err.message}`);
+    }
   }
-
-   
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden p-6">
