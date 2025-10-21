@@ -69,9 +69,6 @@ export default function ApiKeysPage() {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (typeof window !== 'undefined') {
-        console.error('Error uploading image:', errorMessage);
-      }
       alert(`Failed to upload image: ${errorMessage}`);
     } finally {
       setUploadingImages(prev => ({ ...prev, [view]: false }));
@@ -121,10 +118,6 @@ export default function ApiKeysPage() {
         alert(`Error: ${data.error ?? "Failed to create API key"}`);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (typeof window !== 'undefined') {
-        console.error("Error creating key:", errorMessage);
-      }
       alert("Error creating API key");
     } finally {
       setLoading(false);
@@ -144,7 +137,7 @@ export default function ApiKeysPage() {
         backView: backView || null,
       };
 
-      const res = await fetch("/api/hardware-specs", {
+      const res = await fetch("/api/motor-specs", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(hardwareSpecsData),
@@ -183,15 +176,9 @@ export default function ApiKeysPage() {
       }
       
       const data = await res.json();
-      if (typeof window !== 'undefined') {
-        console.log("Loaded API keys with specs:", data);
-      }
       setItems(data.items ?? []);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      if (typeof window !== 'undefined') {
-        console.error("Error loading keys:", errorMessage);
-      }
       setItems([]);
     }
   }
