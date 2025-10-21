@@ -1,65 +1,77 @@
-import { db } from '~/server/db';
-import { hardwareSpecs } from '~/server/db/schema';
+// app/api/motors/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      apiKeyId,
-      motorName,
-      description,
-      monthlyPrice,
-      fullyPaidPrice,
-      frontView,
-      sideView,
-      backView,
-    } = body;
+    const { apiKeyId, motorName, description, monthlyPrice, fullyPaidPrice, frontView, sideView, backView } = body;
 
-    console.log('📝 Received motor data:', { motorName, apiKeyId });
+    console.log('📥 Received motor data:', body);
 
-    if (!apiKeyId) {
-      return NextResponse.json(
-        { error: 'API Key ID is required' },
-        { status: 400 }
-      );
+    // Basic validation
+    if (!apiKeyId || !motorName) {
+      return NextResponse.json({ error: 'apiKeyId and motorName required' }, { status: 400 });
     }
 
-    // Create hardware spec record
-    const newMotor = {
-      id: uuidv4(),
+    // Import database
+    const { db } = await import('~/server/db');
+    const { motorSpecs, apiKeys } = await import('~/server/db/schema');
+    const { eq } = await import('drizzle-orm');
+    const { nanoid } = await import('nanoid');
+
+    // Check API key exists
+    const keyExists = await db.select().from(apiKeys).where(eq(apiKeys.id, apiKeyId)).limit(1);
+    
+    if (!keyExists || keyExists.length === 0) {
+      console.error('❌ API key not found:', apiKeyId);
+      return NextResponse.json({ error: 'API key not found' }, { status: 404 });
+    }
+
+    console.log('✅ API key found, inserting motor spec...');
+
+    // Insert motor spec
+    const result = await db.insert(motorSpecs).values({
+      id: nanoid(),
       apiKeyId,
-      description: description || motorName || 'Motor',
-      monthlyPrice: monthlyPrice ? String(monthlyPrice) : null,
-      fullyPaidPrice: fullyPaidPrice ? String(fullyPaidPrice) : null,
-      frontView: frontView || null,
-      sideView: sideView || null,
-      backView: backView || null,
-    };
+      motorName: String(motorName).trim(),
+      description: description ? String(description).trim() : null,
+      monthlyPrice: monthlyPrice ? String(monthlyPrice).trim() : null,
+      fullyPaidPrice: fullyPaidPrice ? String(fullyPaidPrice).trim() : null,
+      frontView: frontView ? String(frontView).trim() : null,
+      sideView: sideView ? String(sideView).trim() : null,
+      backView: backView ? String(backView).trim() : null,
+    }).returning();
 
-    console.log('🔧 Inserting motor:', newMotor.id);
+    console.log('🎉 Motor spec created:', result[0]);
 
-    await db.insert(hardwareSpecs).values(newMotor);
+    return NextResponse.json({ 
+      success: true, 
+      motor: result[0] 
+    }, { status: 201 });
 
-    console.log('✅ Motor added successfully:', newMotor.id);
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Motor uploaded successfully',
-        id: newMotor.id,
-      },
-      { status: 201 }
-    );
   } catch (error) {
-    console.error('❌ Error uploading motor:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to upload motor',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    console.error('💥 Motor route error:', error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  try {
+    const { db } = await import('~/server/db');
+    const { motorSpecs } = await import('~/server/db/schema');
+    
+    const motors = await db.select().from(motorSpecs);
+    
+    console.log('📊 Fetched motors:', motors.length);
+    
+    return NextResponse.json({ 
+      success: true,
+      motors 
+    });
+  } catch (error) {
+    console.error('💥 Motor GET error:', error);
+    return NextResponse.json({ error: 'Failed to fetch motors' }, { status: 500 });
   }
 }

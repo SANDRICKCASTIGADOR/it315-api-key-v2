@@ -3,13 +3,15 @@ import { NextRequest } from "next/server";
 import { insertKey, listKeys, revokeKey } from "~/server/keys";
 import { CreateApiKeySchema, DeleteKeySchema } from "~/server/validation";
 import { z } from "zod";
+import { db } from "~/server/db";
+import { apiKeys, motorSpecs } from "~/server/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     console.log("Received body:", body);
    
-    // CreateKeySchema should only have { name: string }
     const validatedData = CreateApiKeySchema.parse(body);
     const { name } = validatedData;
     
@@ -20,7 +22,6 @@ export async function POST(req: NextRequest) {
       name: result.name,
       key: result.key,
       last4: result.last4,
-      // createdAt: result.createdAt,
     }, { status: 201 });
     
   } catch (error) {
@@ -48,21 +49,63 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   try {
-    const keys = await listKeys();
+    console.log("🔍 Fetching API keys with motor specs...");
+    
+    // Fetch keys with motor specs using LEFT JOIN
+    const keysWithSpecs = await db
+      .select({
+        id: apiKeys.id,
+        name: apiKeys.name,
+        last4: apiKeys.last4,
+        createdAt: apiKeys.createdAt,
+        revoked: apiKeys.revoked,
+        // Motor specs
+        motorName: motorSpecs.motorName,
+        description: motorSpecs.description,
+        monthlyPrice: motorSpecs.monthlyPrice,
+        fullyPaidPrice: motorSpecs.fullyPaidPrice,
+        frontView: motorSpecs.frontView,
+        sideView: motorSpecs.sideView,
+        backView: motorSpecs.backView,
+      })
+      .from(apiKeys)
+      .leftJoin(motorSpecs, eq(apiKeys.id, motorSpecs.apiKeyId));
 
-    const items = keys.map(key => ({
+    console.log("✅ Fetched keys:", keysWithSpecs.length);
+
+    const items = keysWithSpecs.map(key => ({
       id: key.id,
       name: key.name,
       masked: `****${key.last4}`,
       createdAt: key.createdAt,
+      revoked: key.revoked,
+      hardwareSpec: key.motorName ? {
+        motorName: key.motorName,
+        description: key.description,
+        monthlyPrice: key.monthlyPrice,
+        fullyPaidPrice: key.fullyPaidPrice,
+        frontView: key.frontView,
+        sideView: key.sideView,
+        backView: key.backView,
+      } : null,
     }));
+    
+    console.log("📦 Returning items:", items);
     
     return Response.json({ items }, { status: 200 });
     
   } catch (error) {
-    console.error("Error listing API keys:", error);
+    console.error("💥 Error listing API keys:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
     return Response.json(
-      { error: "Failed to list API keys" },
+      { 
+        error: "Failed to list API keys",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

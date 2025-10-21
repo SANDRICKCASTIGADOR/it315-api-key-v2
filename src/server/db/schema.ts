@@ -1,6 +1,12 @@
-// server/db/schema.ts
+// ~/server/db/schema.ts
 import { sql } from "drizzle-orm";
-import { pgTableCreator, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTableCreator,
+  text,
+  varchar,
+  timestamp,
+  boolean,
+} from "drizzle-orm/pg-core";
 
 export const createTable = pgTableCreator((name) => `it315_api_key_${name}`);
 
@@ -10,25 +16,26 @@ export const apiKeys = createTable("api_keys", {
   name: varchar("name", { length: 256 }).notNull(),
   hashedKey: text("hashedKey").notNull(),
   last4: varchar("last4", { length: 4 }).notNull(),
-  createdAt: timestamp({ withTimezone: true })
+  createdAt: timestamp("createdAt", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   revoked: boolean("revoked").notNull().default(false),
 });
 
-// Hardware Specs table (Motor Listings)
-export const hardwareSpecs = createTable("hardware_specs", {
+// Motor Specs table - ADD THIS
+export const motorSpecs = createTable("motor_specs", {
   id: text("id").primaryKey(),
   apiKeyId: text("api_key_id")
     .notNull()
     .references(() => apiKeys.id, { onDelete: "cascade" }),
-  frontView: text("front_view"),
-  sideView: text("side_view"),
-  backView: text("back_view"),
+  motorName: varchar("motor_name", { length: 256 }).notNull(),
   description: text("description"),
   monthlyPrice: varchar("monthly_price", { length: 50 }),
   fullyPaidPrice: varchar("fully_paid_price", { length: 50 }),
-  createdAt: timestamp({ withTimezone: true })
+  frontView: text("front_view"),
+  sideView: text("side_view"),
+  backView: text("back_view"),
+  createdAt: timestamp("createdAt", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });

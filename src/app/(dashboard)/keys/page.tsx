@@ -9,6 +9,15 @@ type ApiKey = {
   masked: string;
   createdAt: string;
   revoked: boolean;
+  hardwareSpec?: {
+    motorName: string;
+    description: string;
+    monthlyPrice: string;
+    fullyPaidPrice: string;
+    frontView: string;
+    sideView: string;
+    backView: string;
+  };
 };
 
 export default function ApiKeysPage() {
@@ -59,8 +68,11 @@ export default function ApiKeysPage() {
       else if (view === 'back') setBackView(fileUrl);
 
     } catch (error) {
-      console.error('Error uploading image:', error);
-      alert(`Failed to upload image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (typeof window !== 'undefined') {
+        console.error('Error uploading image:', errorMessage);
+      }
+      alert(`Failed to upload image: ${errorMessage}`);
     } finally {
       setUploadingImages(prev => ({ ...prev, [view]: false }));
     }
@@ -89,6 +101,7 @@ export default function ApiKeysPage() {
 
     setLoading(true);
     try {
+      // Step 1: Create API Key
       const res = await fetch("/api/keys", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -99,7 +112,8 @@ export default function ApiKeysPage() {
       if (res.ok) {
         setJustCreated({ key: data.key, id: data.id });
         
-        await uploadMotor(data.id);
+        // Step 2: Upload motor hardware specs
+        await uploadMotorSpecs(data.id);
         
         resetMotorForm();
         await load();
@@ -107,38 +121,42 @@ export default function ApiKeysPage() {
         alert(`Error: ${data.error ?? "Failed to create API key"}`);
       }
     } catch (error) {
-      console.error("Error creating key:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (typeof window !== 'undefined') {
+        console.error("Error creating key:", errorMessage);
+      }
       alert("Error creating API key");
     } finally {
       setLoading(false);
     }
   }
 
-  async function uploadMotor(apiKeyId: string) {
+  async function uploadMotorSpecs(apiKeyId: string) {
     try {
-      const motorData = {
-        apiKeyId,
-        motorName,
-        description,
-        monthlyPrice,
-        fullyPaidPrice,
-        frontView,
-        sideView,
-        backView,
+      const hardwareSpecsData = {
+        apiKeyId: apiKeyId,
+        name: motorName,
+        description: description || null,
+        monthlyPrice: monthlyPrice || null,
+        fullyPaidPrice: fullyPaidPrice || null,
+        frontView: frontView || null,
+        sideView: sideView || null,
+        backView: backView || null,
       };
 
-      const res = await fetch("/api/motors", {
+      const res = await fetch("/api/hardware-specs", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(motorData),
+        body: JSON.stringify(hardwareSpecsData),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        alert(`Motor upload warning: ${data.error ?? "Failed to upload motor"}`);
+        const errorData = await res.json().catch(() => ({ error: "Failed to upload" }));
+        alert(`Warning: API key created but specs upload failed: ${errorData.error ?? "Unknown error"}`);
       }
     } catch (error) {
-      console.error("Error uploading motor:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      alert("Warning: API key created but failed to save hardware specifications");
     }
   }
 
@@ -154,16 +172,26 @@ export default function ApiKeysPage() {
 
   async function load() {
     try {
-      const res = await fetch("/api/keys", { cache: "no-store" });
+      const res = await fetch("/api/keys", { 
+        method: "GET",
+        headers: { "content-type": "application/json" },
+      });
+      
       if (!res.ok) {
-        console.error("Failed to load keys:", res.status);
-        setItems([]);
-        return;
+        const errorText = await res.text().catch(() => "Unknown error");
+        throw new Error(`Failed to load keys: ${res.status} - ${errorText}`);
       }
+      
       const data = await res.json();
+      if (typeof window !== 'undefined') {
+        console.log("Loaded API keys with specs:", data);
+      }
       setItems(data.items ?? []);
     } catch (error) {
-      console.error("Error loading keys:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      if (typeof window !== 'undefined') {
+        console.error("Error loading keys:", errorMessage);
+      }
       setItems([]);
     }
   }
@@ -476,42 +504,43 @@ export default function ApiKeysPage() {
               <thead>
                 <tr className="border-gray-700 bg-gray-800/50">
                   <th className="text-gray-200 font-semibold py-4 px-6 text-left">Motor Name</th>
-                  <th className="text-gray-200 font-semibold py-4">Key</th>
-                  <th className="text-gray-200 font-semibold py-4">Created</th>
-                  <th className="text-gray-200 font-semibold py-4">Status</th>
+                  <th className="text-gray-200 font-semibold py-4 px-6 text-left">Key</th>
+                  <th className="text-gray-200 font-semibold py-4 px-6 text-left">Created</th>
+                  <th className="text-gray-200 font-semibold py-4 px-6 text-left">Status</th>
                   <th className="text-right text-gray-200 font-semibold py-4 px-6">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((row, index) => (
+                {items.filter(row => !row.revoked).map((row, index) => (
                   <tr key={row.id} className="border-gray-700 hover:bg-gray-800/30 transition-colors duration-200">
-                    <td className="py-4 px-6 font-medium text-gray-200">
-                      {row.name || <span className="text-gray-500 italic">Motor #{index + 1}</span>}
+                    <td className="py-4 px-6">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-gray-200">
+                          {row.hardwareSpec?.motorName || row.name || <span className="text-gray-500 italic">Motor #{index + 1}</span>}
+                        </span>
+                        {row.hardwareSpec?.description && (
+                          <span className="text-xs text-gray-400 line-clamp-1">{row.hardwareSpec.description}</span>
+                        )}
+                      </div>
                     </td>
-                    <td className="font-mono text-gray-300 bg-gray-700/30 rounded-lg mx-2 py-2 px-3 text-sm">
-                      {formatKeyDisplay(row.masked)}
+                    <td className="py-4 px-6">
+                      <code className="font-mono text-gray-300 bg-gray-700/30 rounded-lg py-2 px-3 text-sm inline-block">
+                        {formatKeyDisplay(row.masked)}
+                      </code>
                     </td>
-                    <td className="text-gray-300 py-4 text-sm text-center">
+                    <td className="text-gray-300 py-4 px-6 text-sm">
                       {new Date(row.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="py-4 text-center">
-                      {row.revoked ? (
-                        <span className="inline-flex items-center gap-1 bg-red-500/10 text-red-300 border border-red-500/30 px-3 py-1 rounded-full text-xs font-semibold">
-                          <XCircle className="h-3 w-3" />
-                          Revoked
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-300 border border-green-500/30 px-3 py-1 rounded-full text-xs font-semibold">
-                          <CheckCircle className="h-3 w-3" />
-                          Active
-                        </span>
-                      )}
+                    <td className="py-4 px-6">
+                      <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-300 border border-green-500/30 px-3 py-1 rounded-full text-xs font-semibold">
+                        <CheckCircle className="h-3 w-3" />
+                        Active
+                      </span>
                     </td>
                     <td className="text-right py-4 px-6">
                       <button
-                        disabled={row.revoked}
                         onClick={() => revokeKey(row.id)}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg px-4 py-2 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg px-4 py-2 transition-all duration-200 hover:scale-105"
                       >
                         <XCircle className="h-4 w-4 inline mr-1" />
                         Revoke
@@ -519,7 +548,7 @@ export default function ApiKeysPage() {
                     </td>
                   </tr>
                 ))}
-                {items.length === 0 && (
+                {items.filter(row => !row.revoked).length === 0 && (
                   <tr>
                     <td colSpan={5} className="text-center text-lg text-gray-400 py-12">
                       <div className="flex flex-col items-center gap-4">
@@ -527,7 +556,7 @@ export default function ApiKeysPage() {
                           <KeyRound className="h-8 w-8 text-gray-500" />
                         </div>
                         <div>
-                          <p className="font-medium mb-1">No API Keys yet</p>
+                          <p className="font-medium mb-1">No Active API Keys</p>
                           <p className="text-sm text-gray-500">Create your first motor and API key to get started</p>
                         </div>
                       </div>

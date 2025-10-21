@@ -1,0 +1,1 @@
+ALTER TABLE "it315_api_key_hardware_specs" ADD COLUMN "motor_name" varchar(256) NOT NULL;

@@ -22,6 +22,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.31.3",
     "@neondatabase/serverless": "^1.0.1",
+    "@paralleldrive/cuid2": "^3.1.0",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
@@ -50,7 +51,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/uuid": "^11.0.0",
-    "drizzle-kit": "^0.30.5",
+    "drizzle-kit": "^0.31.5",
     "eslint": "^9.23.0",
     "eslint-config-next": "^15.2.3",
     "eslint-plugin-drizzle": "^0.2.3",

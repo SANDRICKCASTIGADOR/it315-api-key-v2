@@ -1,7 +1,7 @@
 // server/keys.ts
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { db } from "./db";
-import { apiKeys, hardwareSpecs } from "./db/schema";
+import { apiKeys, motorSpecs } from "./db/schema";
 import { desc, eq } from "drizzle-orm";
 
 const KEY_PREFIX = process.env.KEY_PREFIX ?? "sk_live_";
@@ -17,7 +17,8 @@ export function sha256(data: string) {
     return createHash("sha256").update(data).digest("hex");
 }
 
-export interface HardwareSpecs {
+export interface MotorSpecs {
+    motorName?: string;
     frontView?: string;
     sideView?: string;
     backView?: string;
@@ -26,7 +27,7 @@ export interface HardwareSpecs {
     fullyPaidPrice?: string;
 }
 
-export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs) {
+export async function insertKey(name: string, motorSpecsData?: MotorSpecs) {
     const { key, last4 } = generatePlainKey();
     const hashed = sha256(key);
     const keyId = randomUUID();
@@ -40,16 +41,17 @@ export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs)
         last4,
     });
     
-    if (hardwareSpecsData) {
-        await db.insert(hardwareSpecs).values({
+    if (motorSpecsData) {
+        await db.insert(motorSpecs).values({
             id: specId,
             apiKeyId: keyId,
-            frontView: hardwareSpecsData.frontView,
-            sideView: hardwareSpecsData.sideView,
-            backView: hardwareSpecsData.backView,
-            description: hardwareSpecsData.description,
-            monthlyPrice: hardwareSpecsData.monthlyPrice,
-            fullyPaidPrice: hardwareSpecsData.fullyPaidPrice,
+            motorName: motorSpecsData.motorName || '',
+            frontView: motorSpecsData.frontView || '',
+            sideView: motorSpecsData.sideView || '',
+            backView: motorSpecsData.backView || '',
+            description: motorSpecsData.description || '',
+            monthlyPrice: motorSpecsData.monthlyPrice || '',
+            fullyPaidPrice: motorSpecsData.fullyPaidPrice || '',
         });
     }
     
@@ -58,12 +60,11 @@ export async function insertKey(name: string, hardwareSpecsData?: HardwareSpecs)
         name, 
         key, 
         last4,
-        hardwareSpecs: hardwareSpecsData
+        motorSpecs: motorSpecsData
     } as const;
 }
 
 export async function listKeys() {
-
     const result = await db
         .select({
             id: apiKeys.id,
@@ -71,16 +72,17 @@ export async function listKeys() {
             last4: apiKeys.last4,
             createdAt: apiKeys.createdAt,
             revoked: apiKeys.revoked,
-            // Hardware specs
-            frontView: hardwareSpecs.frontView,
-            sideView: hardwareSpecs.sideView,
-            backView: hardwareSpecs.backView,
-            description: hardwareSpecs.description,
-            monthlyPrice: hardwareSpecs.monthlyPrice,
-            fullyPaidPrice: hardwareSpecs.fullyPaidPrice,
+            // Motor specs
+            motorName: motorSpecs.motorName,
+            frontView: motorSpecs.frontView,
+            sideView: motorSpecs.sideView,
+            backView: motorSpecs.backView,
+            description: motorSpecs.description,
+            monthlyPrice: motorSpecs.monthlyPrice,
+            fullyPaidPrice: motorSpecs.fullyPaidPrice,
         })
         .from(apiKeys)
-        .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
+        .leftJoin(motorSpecs, eq(apiKeys.id, motorSpecs.apiKeyId))
         .where(eq(apiKeys.revoked, false))
         .orderBy(desc(apiKeys.createdAt));
     
@@ -98,42 +100,59 @@ export async function revokeKey(id: string) {
 
 export async function updateKeySpecs(
     apiKeyId: string, 
-    hardwareSpecsData: Partial<HardwareSpecs>
+    motorSpecsData: Partial<MotorSpecs>
 ) {
-    
     const existing = await db
         .select()
-        .from(hardwareSpecs)
-        .where(eq(hardwareSpecs.apiKeyId, apiKeyId))
+        .from(motorSpecs)
+        .where(eq(motorSpecs.apiKeyId, apiKeyId))
         .limit(1);
     
     if (existing.length > 0) {
-        // Update existing
+        // Update existing - only include fields that are provided
+        const updateData: any = {};
+        
+        if (motorSpecsData.motorName !== undefined) {
+            updateData.motorName = motorSpecsData.motorName;
+        }
+        if (motorSpecsData.frontView !== undefined) {
+            updateData.frontView = motorSpecsData.frontView;
+        }
+        if (motorSpecsData.sideView !== undefined) {
+            updateData.sideView = motorSpecsData.sideView;
+        }
+        if (motorSpecsData.backView !== undefined) {
+            updateData.backView = motorSpecsData.backView;
+        }
+        if (motorSpecsData.description !== undefined) {
+            updateData.description = motorSpecsData.description;
+        }
+        if (motorSpecsData.monthlyPrice !== undefined) {
+            updateData.monthlyPrice = motorSpecsData.monthlyPrice;
+        }
+        if (motorSpecsData.fullyPaidPrice !== undefined) {
+            updateData.fullyPaidPrice = motorSpecsData.fullyPaidPrice;
+        }
+        
         const res = await db
-            .update(hardwareSpecs)
-            .set({
-                frontView: hardwareSpecsData.frontView,
-                sideView: hardwareSpecsData.sideView,
-                backView: hardwareSpecsData.backView,
-                description: hardwareSpecsData.description,
-                monthlyPrice: hardwareSpecsData.monthlyPrice,
-                fullyPaidPrice: hardwareSpecsData.fullyPaidPrice,
-            })
-            .where(eq(hardwareSpecs.apiKeyId, apiKeyId));
+            .update(motorSpecs)
+            .set(updateData)
+            .where(eq(motorSpecs.apiKeyId, apiKeyId));
         
         return (res.rowCount ?? 0) > 0;
     } else {
         // Create new
         const specId = randomUUID();
-        await db.insert(hardwareSpecs).values({
+        await db.insert(motorSpecs).values({
             id: specId,
             apiKeyId,
-            frontView: hardwareSpecsData.frontView,
-            sideView: hardwareSpecsData.sideView,
-            backView: hardwareSpecsData.backView,
-            description: hardwareSpecsData.description,
-            monthlyPrice: hardwareSpecsData.monthlyPrice,
-            fullyPaidPrice: hardwareSpecsData.fullyPaidPrice,
+            motorName: motorSpecsData.motorName || '',
+            frontView: motorSpecsData.frontView || '',
+            sideView: motorSpecsData.sideView || '',
+            backView: motorSpecsData.backView || '',
+            description: motorSpecsData.description || '',
+            monthlyPrice: motorSpecsData.monthlyPrice || '',
+            fullyPaidPrice: motorSpecsData.fullyPaidPrice || '',
         });
         
         return true;
@@ -149,16 +168,17 @@ export async function getKeyDetails(id: string) {
             createdAt: apiKeys.createdAt,
             revoked: apiKeys.revoked,
             hashedKey: apiKeys.hashedKey,
-            // Hardware specs
-            frontView: hardwareSpecs.frontView,
-            sideView: hardwareSpecs.sideView,
-            backView: hardwareSpecs.backView,
-            description: hardwareSpecs.description,
-            monthlyPrice: hardwareSpecs.monthlyPrice,
-            fullyPaidPrice: hardwareSpecs.fullyPaidPrice,
+            // Motor specs
+            motorName: motorSpecs.motorName,
+            frontView: motorSpecs.frontView,
+            sideView: motorSpecs.sideView,
+            backView: motorSpecs.backView,
+            description: motorSpecs.description,
+            monthlyPrice: motorSpecs.monthlyPrice,
+            fullyPaidPrice: motorSpecs.fullyPaidPrice,
         })
         .from(apiKeys)
-        .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
+        .leftJoin(motorSpecs, eq(apiKeys.id, motorSpecs.apiKeyId))
         .where(eq(apiKeys.id, id))
         .limit(1);
     
@@ -172,16 +192,17 @@ export async function verifyKey(apiKey: string) {
             id: apiKeys.id, 
             name: apiKeys.name,
             revoked: apiKeys.revoked,
-            // Hardware specs
-            frontView: hardwareSpecs.frontView,
-            sideView: hardwareSpecs.sideView,
-            backView: hardwareSpecs.backView,
-            description: hardwareSpecs.description,
-            monthlyPrice: hardwareSpecs.monthlyPrice,
-            fullyPaidPrice: hardwareSpecs.fullyPaidPrice,
+            // Motor specs
+            motorName: motorSpecs.motorName,
+            frontView: motorSpecs.frontView,
+            sideView: motorSpecs.sideView,
+            backView: motorSpecs.backView,
+            description: motorSpecs.description,
+            monthlyPrice: motorSpecs.monthlyPrice,
+            fullyPaidPrice: motorSpecs.fullyPaidPrice,
         })
         .from(apiKeys)
-        .leftJoin(hardwareSpecs, eq(apiKeys.id, hardwareSpecs.apiKeyId))
+        .leftJoin(motorSpecs, eq(apiKeys.id, motorSpecs.apiKeyId))
         .where(eq(apiKeys.hashedKey, hashed))
         .limit(1);
     
@@ -193,7 +214,8 @@ export async function verifyKey(apiKey: string) {
         valid: true as const, 
         keyId: row.id,
         name: row.name,
-        hardwareSpecs: {
+        motorSpecs: {
+            motorName: row.motorName,
             frontView: row.frontView,
             sideView: row.sideView,
             backView: row.backView,
